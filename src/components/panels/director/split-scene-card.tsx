@@ -809,17 +809,17 @@ export function SplitSceneCard({
           {isVideoReady && scene.videoUrl && (
             <div className="flex items-center gap-1">
               <div 
-                className="flex-1 aspect-video max-w-[120px] bg-muted rounded overflow-hidden cursor-pointer relative"
+                className="flex-1 aspect-video max-w-[120px] bg-muted rounded overflow-hidden cursor-pointer relative flex items-center justify-center"
                 onClick={() => setPreviewItem({ type: 'video', url: scene.videoUrl!, name: `分镜 ${scene.id + 1} 视频` })}
                 draggable={!!canDragVideo}
                 onDragStart={handleVideoDragStart}
               >
-                <video src={scene.videoUrl} className="w-full h-full object-cover" muted preload="none" poster={resolvedImageUrl || undefined} />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                <video src={scene.videoUrl} className="w-full h-full object-contain" muted preload="none" poster={resolvedImageUrl || undefined} />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
                   <Play className="h-4 w-4 text-white" />
                 </div>
                 {canDragVideo && (
-                  <span className="absolute bottom-0.5 right-0.5 text-[8px] bg-green-600 text-white px-1 rounded">拖到时间线</span>
+                  <span className="absolute bottom-0.5 right-0.5 text-[8px] bg-green-600 text-white px-1 rounded pointer-events-none">拖到时间线</span>
                 )}
               </div>
               {/* 提取尾帧按钮 */}

@@ -2022,8 +2022,131 @@ export function ScriptView() {
         </div>
       </div>
 
-      {/* 三栏布局 */}
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
+      {/* ========== 手机端布局（独立，不影响桌面端） ========== */}
+      {/* 手机端：垂直布局，可滚动 - 仅在 < 768px 显示 */}
+      {/* 三个面板上下排列：剧本输入 -> 层级结构 -> 属性面板 */}
+      <div className="md:hidden flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-3 p-2">
+          {/* 第一个面板：剧本输入 */}
+          <div className="w-full min-h-[300px] flex-shrink-0 border rounded-lg overflow-hidden">
+            <ScriptInput
+              rawScript={rawScript}
+              language={language}
+              targetDuration={targetDuration}
+              styleId={styleId}
+              sceneCount={sceneCount}
+              shotCount={shotCount}
+              parseStatus={parseStatus}
+              parseError={parseError}
+              chatConfigured={chatConfigured}
+              onRawScriptChange={(v) => setRawScript(projectId, v)}
+              onLanguageChange={(v) => setLanguage(projectId, v)}
+              onDurationChange={(v) => setTargetDuration(projectId, v)}
+              onStyleChange={(v) => setStyleId(projectId, v)}
+              onSceneCountChange={(v) => setSceneCount(projectId, v === "auto" ? undefined : v)}
+              onShotCountChange={(v) => setShotCount(projectId, v === "auto" ? undefined : v)}
+              onParse={handleParse}
+              onGenerateFromIdea={handleGenerateFromIdea}
+              onImportFullScript={handleImportFullScript}
+              importStatus={importStatus}
+              importError={importError}
+              onCalibrate={handleCalibrate}
+              calibrationStatus={calibrationStatus}
+              missingTitleCount={missingTitleCount}
+              onGenerateSynopses={handleGenerateSynopses}
+              synopsisStatus={synopsisStatus}
+              missingSynopsisCount={missingSynopsisCount}
+              viewpointAnalysisStatus={viewpointAnalysisStatus}
+              characterCalibrationStatus={characterCalibrationStatus}
+              sceneCalibrationStatus={sceneCalibrationStatus}
+              secondPassTypes={secondPassTypes}
+            />
+          </div>
+
+          {/* 第二个面板：层级结构 */}
+          <div className="w-full min-h-[400px] flex-shrink-0 border rounded-lg overflow-hidden">
+            <EpisodeTree
+              scriptData={scriptData}
+              shots={shots}
+              shotStatus={scriptProject?.shotStatus}
+              selectedItemId={selectedItemId}
+              selectedItemType={selectedItemType}
+              onSelectItem={handleSelectItem}
+              onAddEpisode={handleAddEpisode}
+              onUpdateEpisode={handleUpdateEpisode}
+              onDeleteEpisode={handleDeleteEpisode}
+              onAddScene={handleAddScene}
+              onUpdateScene={handleUpdateScene}
+              onDeleteScene={handleDeleteScene}
+              onAddCharacter={handleAddCharacter}
+              onUpdateCharacter={handleUpdateCharacter}
+              onDeleteCharacter={handleDeleteCharacter}
+              onDeleteShot={handleDeleteShot}
+              onGenerateEpisodeShots={handleGenerateEpisodeShots}
+              onRegenerateAllShots={handleRegenerateAllShots}
+              episodeGenerationStatus={episodeGenerationStatus}
+              onCalibrateShots={handleCalibrateShots}
+              onCalibrateScenesShots={handleCalibrateScenesShots}
+              onCalibrateCharacters={handleCalibrateCharacters}
+              characterCalibrationStatus={characterCalibrationStatus}
+              // AI 角色查找相关
+              projectBackground={scriptProject?.projectBackground ?? undefined}
+              episodeRawScripts={episodeRawScripts}
+              onAIFindCharacter={scriptProject?.projectBackground ? handleAIFindCharacter : undefined}
+              // AI 场景查找相关
+              onAIFindScene={scriptProject?.projectBackground ? handleAIFindScene : undefined}
+              // 场景校准相关
+              onCalibrateScenes={scriptProject?.projectBackground ? handleCalibrateScenes : undefined}
+              onCalibrateEpisodeScenes={scriptProject?.projectBackground ? handleCalibrateEpisodeScenes : undefined}
+              sceneCalibrationStatus={sceneCalibrationStatus}
+              // 预告片相关
+              trailerConfig={trailerConfig}
+              onGenerateTrailer={handleGenerateTrailer}
+              onClearTrailer={handleClearTrailer}
+              trailerApiOptions={trailerApiOptions()}
+              // 单个分镜校准
+              onCalibrateSingleShot={handleCalibrateSingleShot}
+              singleShotCalibrationStatus={singleShotCalibrationStatus}
+            />
+          </div>
+
+          {/* 第三个面板：属性面板 */}
+          <div className="w-full min-h-[300px] flex-shrink-0 border rounded-lg overflow-hidden">
+            <PropertyPanel
+              selectedItemId={selectedItemId}
+              selectedItemType={selectedItemType}
+              character={selectedCharacter}
+              scene={selectedScene}
+              shot={selectedShot}
+              episode={selectedEpisode}
+              episodeShots={selectedEpisodeShots}
+              sceneShots={selectedSceneShots}
+              onGoToCharacterLibrary={handleGoToCharacterLibrary}
+              onGoToSceneLibrary={handleGoToSceneLibrary}
+              onGoToDirector={handleGoToDirector}
+              onGoToDirectorFromScene={handleGoToDirectorFromScene}
+              onGenerateEpisodeShots={handleGenerateEpisodeShots}
+              onCalibrateShots={handleCalibrateShots}
+              onUpdateCharacter={handleUpdateCharacter}
+              onUpdateScene={handleUpdateScene}
+              onUpdateShot={handleUpdateShot}
+              onDeleteCharacter={handleDeleteCharacter}
+              onDeleteScene={handleDeleteScene}
+              onDeleteShot={handleDeleteShot}
+              // 角色阶段分析
+              onAnalyzeCharacterStages={handleAnalyzeCharacterStages}
+              stageAnalysisStatus={stageAnalysisStatus}
+              suggestMultiStage={suggestMultiStage}
+              multiStageHints={multiStageHints}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ========== 桌面端布局（保持原样，完全不变） ========== */}
+      {/* 桌面端：水平布局，可调整大小 - 仅在 >= 768px 显示 */}
+      {/* 注意：此部分代码完全保持原样，未做任何修改 */}
+      <ResizablePanelGroup direction="horizontal" className="hidden md:flex flex-1">
         {/* 左栏：剧本输入 */}
         <ResizablePanel defaultSize={30} minSize={20}>
           <ScriptInput

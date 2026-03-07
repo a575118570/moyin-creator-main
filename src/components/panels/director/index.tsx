@@ -613,10 +613,9 @@ export function DirectorView() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-3 pt-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {renderContent()}
-      </div>
 
-      {/* Step Navigation Footer */}
-      <div className="p-3 pt-2 border-t bg-panel">
+        {/* Step Navigation Footer - 放在内容内部，可以滚动 */}
+        <div className="p-3 pt-2 border-t bg-panel mt-4">
         {/* Step indicator */}
         <div className="flex items-center justify-center gap-2 mb-2">
           {STEPS.map((step, idx) => (
@@ -669,6 +668,7 @@ export function DirectorView() {
             下一步
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
+        </div>
         </div>
       </div>
     </div>

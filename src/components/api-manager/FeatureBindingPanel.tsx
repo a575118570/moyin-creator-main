@@ -78,7 +78,7 @@ const FEATURE_CONFIGS: FeatureMeta[] = [
     description: "将图片转换为视频",
     icon: <Video className="h-4 w-4" />,
     requiredCapability: "video_generation",
-    recommendation: "🧪 测试推荐 doubao-seedream-4-5-251128 — 适合快速验证流程",
+    recommendation: "🧪 测试推荐 doubao-seedance-1-0-lite-i2v-250428 — 适合快速验证流程",
   },
   {
     key: "image_understanding",
@@ -150,13 +150,17 @@ const MODEL_CAPABILITIES: Record<string, ModelCapability[]> = {
   'gemini-imagen': ['image_generation'],
   'gemini-3-pro-image-preview': ['image_generation'],
   'gpt-image-1.5': ['image_generation'],
+  // 豆包 SeDream（文生图）
+  'doubao-seedream-4-5-251128': ['image_generation'],
+  'doubao-seedream-4-0-250828': ['image_generation'],
+  'doubao-seedream-3-0-t2i-250415': ['image_generation'],
+  // SeedEdit（图生图）模型已移除：OpenAI 兼容通道不提供，避免误选导致 404
 
   // ---- 视频生成模型 ----
   'cogvideox': ['video_generation'],
   'gemini-veo': ['video_generation'],
   'doubao-seedance-1-5-pro': ['video_generation'],
   'doubao-seedance-1-5-pro-251215': ['video_generation'],
-  'doubao-seedream-4-5-251128': ['video_generation'],
   'veo3.1': ['video_generation'],
   'sora-2-all': ['video_generation'],
   'wan2.6-i2v': ['video_generation'],
@@ -374,19 +378,19 @@ export function FeatureBindingPanel() {
   const [searchQuery, setSearchQuery] = useState<Record<string, string>>({});
 
   return (
-    <div className="p-6 border border-border rounded-xl bg-card space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="font-bold text-foreground flex items-center gap-2">
-          <Link2 className="h-4 w-4" />
+    <div className="p-2 md:p-6 border border-border rounded-xl bg-card space-y-2 md:space-y-6 overflow-hidden">
+      <div className="flex items-center justify-between gap-2 shrink-0">
+        <h3 className="font-bold text-foreground flex items-center gap-1.5 md:gap-2 text-xs md:text-base">
+          <Link2 className="h-3 w-3 md:h-4 md:w-4" />
           服务映射
         </h3>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-[9px] md:text-xs text-muted-foreground whitespace-nowrap">
           已配置: {configuredCount}/{FEATURE_CONFIGS.length}
         </span>
       </div>
 
       {/* Service Mapping Table - Multi-Select */}
-      <div className="grid gap-3">
+      <div className="grid gap-1.5 md:gap-3 overflow-hidden flex-1 min-h-0">
         {FEATURE_CONFIGS.map((feature) => {
           const options = optionsByFeature[feature.key] || [];
           const currentBindings = getFeatureBindings(feature.key);
@@ -432,7 +436,7 @@ export function FeatureBindingPanel() {
             <div
               key={feature.key}
               className={cn(
-                "rounded-lg border transition-all",
+                "rounded-lg border transition-all shrink-0",
                 configured
                   ? "bg-primary/5 border-primary/30"
                   : "bg-destructive/5 border-destructive/30"
@@ -440,48 +444,48 @@ export function FeatureBindingPanel() {
             >
               {/* Header - Click to expand */}
               <div 
-                className="flex items-center gap-4 p-4 cursor-pointer hover:bg-accent/50 transition-colors"
+                className="flex items-center gap-1.5 md:gap-4 p-2 md:p-4 cursor-pointer hover:bg-accent/50 transition-colors"
                 onClick={() => toggleExpanded(feature.key)}
               >
                 {/* Service Info */}
-                <div className="flex items-center gap-3 flex-1">
+                <div className="flex items-center gap-1.5 md:gap-3 flex-1 min-w-0">
                   <div
                     className={cn(
-                      "p-2 rounded-lg",
+                      "p-1 md:p-2 rounded-lg shrink-0",
                       configured
                         ? "bg-primary/10 text-primary"
                         : "bg-destructive/10 text-destructive"
                     )}
                   >
-                    {feature.icon}
+                    <div className="h-3 w-3 md:h-4 md:w-4">{feature.icon}</div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Label className="font-medium text-foreground cursor-pointer">
+                    <div className="flex items-center gap-1 md:gap-2 flex-wrap">
+                      <Label className="font-medium text-foreground cursor-pointer text-[11px] md:text-sm truncate">
                         {feature.name}
                       </Label>
                       {configured ? (
-                        <Check className="h-3 w-3 text-primary shrink-0" />
+                        <Check className="h-2.5 w-2.5 md:h-3 md:w-3 text-primary shrink-0" />
                       ) : (
-                        <X className="h-3 w-3 text-destructive shrink-0" />
+                        <X className="h-2.5 w-2.5 md:h-3 md:w-3 text-destructive shrink-0" />
                       )}
                       {validBindings.length > 0 && (
-                        <span className="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">
+                        <span className="text-[9px] md:text-xs bg-primary/20 text-primary px-0.5 md:px-1.5 py-0.5 rounded whitespace-nowrap">
                           {validBindings.length} 个模型
                         </span>
                       )}
                       {isFreedomFeature && (
-                        <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                        <span className="text-[9px] md:text-xs bg-muted text-muted-foreground px-0.5 md:px-1.5 py-0.5 rounded whitespace-nowrap">
                           可用 {selectableOptionKeys.length}
                         </span>
                       )}
                       {isFreedomFeature && invalidBindings.length > 0 && (
-                        <span className="text-xs bg-amber-500/15 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded">
+                        <span className="text-[9px] md:text-xs bg-amber-500/15 text-amber-700 dark:text-amber-300 px-0.5 md:px-1.5 py-0.5 rounded whitespace-nowrap">
                           暂不可用 {invalidBindings.length}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className="text-[9px] md:text-xs text-muted-foreground truncate mt-0.5">
                       {feature.description}
                     </p>
                   </div>
@@ -490,52 +494,53 @@ export function FeatureBindingPanel() {
                 {/* Expand/Collapse Icon */}
                 <div className="shrink-0">
                   {isExpanded ? (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    <ChevronUp className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
                   ) : (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    <ChevronDown className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
                   )}
                 </div>
               </div>
               
               {/* Expanded: Brand-categorized model selection */}
               {isExpanded && (
-                <div className="px-4 pb-4 pt-0 border-t border-border/50">
+                <div className="px-2 md:px-4 pb-2 md:pb-4 pt-0 border-t border-border/50">
                   {options.length === 0 ? (
-                    <p className="text-xs text-muted-foreground py-2">
+                    <p className="text-[9px] md:text-xs text-muted-foreground py-1.5 md:py-2">
                       暂无可选模型（请先在 API 服务商里配置模型列表）
                     </p>
                   ) : (
-                    <div className="space-y-3 pt-3">
-                      <p className="text-xs text-muted-foreground">
+                    <div className="space-y-1.5 md:space-y-3 pt-1.5 md:pt-3">
+                      <p className="text-[9px] md:text-xs text-muted-foreground">
                         可多选，请求将按轮询分配到各模型（间隔 3 秒）
                       </p>
 
                       {/* 推荐模型提示 */}
                       {feature.recommendation && (
-                        <div className="flex items-start gap-2 px-3 py-2.5 rounded-md bg-red-500/10 border border-red-500/30">
-                          <span className="text-sm font-bold text-red-600 dark:text-red-400 leading-relaxed">
+                        <div className="flex items-start gap-1.5 md:gap-2 px-2 md:px-3 py-2 md:py-2.5 rounded-md bg-red-500/10 border border-red-500/30">
+                          <span className="text-xs md:text-sm font-bold text-red-600 dark:text-red-400 leading-relaxed">
                             {feature.recommendation}
                           </span>
                         </div>
                       )}
                       {isFreedomFeature && invalidBindings.length > 0 && (
-                        <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                        <p className="text-[10px] md:text-[11px] text-amber-700 dark:text-amber-300">
                           检测到暂不可用绑定：系统不会自动清理，模型恢复后会自动继续可用。
                         </p>
                       )}
 
                       {/* 自由板块一键全选（勾选=全选；取消=全部不选） */}
                       {isFreedomFeature && (
-                        <div className="flex items-center justify-between rounded-md border border-border/60 bg-muted/30 px-3 py-2">
-                          <label className="flex items-center gap-2 text-xs font-medium text-foreground">
+                        <div className="flex items-center justify-between rounded-md border border-border/60 bg-muted/30 px-2 md:px-3 py-1.5 md:py-2 gap-2">
+                          <label className="flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-medium text-foreground flex-1 min-w-0">
                             <Checkbox
                               checked={isAllSelected ? true : isPartiallySelected ? 'indeterminate' : false}
                               onCheckedChange={handleToggleSelectAll}
                               disabled={selectableOptionKeys.length === 0}
+                              className="shrink-0"
                             />
-                            全选模型（取消即全部不选）
+                            <span className="truncate">全选模型（取消即全部不选）</span>
                           </label>
-                          <span className="text-[11px] text-muted-foreground">
+                          <span className="text-[10px] md:text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
                             {selectedSelectableCount}/{selectableOptionKeys.length}
                           </span>
                         </div>
@@ -543,13 +548,13 @@ export function FeatureBindingPanel() {
 
                       {/* Search */}
                       <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 md:h-3.5 md:w-3.5 text-muted-foreground" />
                         <input
                           type="text"
                           placeholder="搜索模型名称..."
                           value={searchQuery[feature.key] || ''}
                           onChange={(e) => setSearchQuery(prev => ({ ...prev, [feature.key]: e.target.value }))}
-                          className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
+                          className="w-full pl-7 md:pl-8 pr-2 md:pr-3 py-1.5 md:py-1.5 text-[11px] md:text-xs rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/50"
                         />
                       </div>
 
@@ -568,13 +573,13 @@ export function FeatureBindingPanel() {
 
                         return (
                           <>
-                            <div className="flex flex-wrap gap-1.5">
+                            <div className="flex flex-wrap gap-1 md:gap-1.5">
                               {/* 全部品牌 */}
                               <button
                                 type="button"
                                 onClick={() => setSelectedBrand(prev => ({ ...prev, [feature.key]: null }))}
                                 className={cn(
-                                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors",
+                                  "inline-flex items-center gap-1 md:gap-1.5 px-2 md:px-2.5 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-medium border transition-colors",
                                   !activeBrand
                                     ? "bg-primary/10 border-primary/40 text-primary"
                                     : "bg-muted/30 border-border hover:bg-accent/50 text-muted-foreground"
@@ -582,7 +587,7 @@ export function FeatureBindingPanel() {
                               >
                                 全部品牌
                                 <span className={cn(
-                                  "text-[10px] px-1 py-0.5 rounded-full min-w-[18px] text-center",
+                                  "text-[9px] md:text-[10px] px-0.5 md:px-1 py-0.5 rounded-full min-w-[16px] md:min-w-[18px] text-center",
                                   !activeBrand ? "bg-primary/20" : "bg-muted"
                                 )}>
                                   {options.length}
@@ -601,16 +606,16 @@ export function FeatureBindingPanel() {
                                       [feature.key]: isActive ? null : brandId,
                                     }))}
                                     className={cn(
-                                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors",
+                                      "inline-flex items-center gap-1 md:gap-1.5 px-2 md:px-2.5 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-medium border transition-colors",
                                       isActive
                                         ? "bg-primary/10 border-primary/40 text-primary"
                                         : "bg-muted/30 border-border hover:bg-accent/50 text-muted-foreground"
                                     )}
                                   >
-                                    <span className="shrink-0">{getBrandIcon(brandId, 14)}</span>
-                                    {info.displayName}
+                                    <span className="shrink-0">{getBrandIcon(brandId, 12)}</span>
+                                    <span className="truncate max-w-[60px] md:max-w-none">{info.displayName}</span>
                                     <span className={cn(
-                                      "text-[10px] px-1 py-0.5 rounded-full min-w-[18px] text-center",
+                                      "text-[9px] md:text-[10px] px-0.5 md:px-1 py-0.5 rounded-full min-w-[16px] md:min-w-[18px] text-center shrink-0",
                                       isActive ? "bg-primary/20" : "bg-muted"
                                     )}>
                                       {brandOpts.length}
@@ -621,9 +626,9 @@ export function FeatureBindingPanel() {
                             </div>
 
                             {/* Model List */}
-                            <div className="space-y-1 max-h-[280px] overflow-y-auto">
+                            <div className="space-y-1 max-h-[200px] md:max-h-[280px] overflow-y-auto">
                               {filteredOptions.length === 0 ? (
-                                <p className="text-xs text-muted-foreground py-2 text-center">
+                                <p className="text-[10px] md:text-xs text-muted-foreground py-2 text-center">
                                   无匹配模型
                                 </p>
                               ) : (
@@ -638,7 +643,7 @@ export function FeatureBindingPanel() {
                                     <label
                                       key={optionKey}
                                       className={cn(
-                                        "flex items-center gap-3 p-2 rounded-md cursor-pointer transition-colors",
+                                        "flex items-center gap-1.5 md:gap-3 p-1.5 md:p-2 rounded-md cursor-pointer transition-colors min-h-[44px]",
                                         isSelected
                                           ? "bg-primary/10 border border-primary/30"
                                           : "hover:bg-accent/50 border border-transparent",
@@ -649,12 +654,13 @@ export function FeatureBindingPanel() {
                                         checked={isSelected}
                                         onCheckedChange={() => handleToggleBinding(feature, optionKey)}
                                         disabled={!optionConfigured}
+                                        className="shrink-0"
                                       />
-                                      <span className="shrink-0">{getBrandIcon(brandId, 14)}</span>
-                                      <span className="text-xs font-mono text-foreground">
+                                      <span className="shrink-0">{getBrandIcon(brandId, 12)}</span>
+                                      <span className="text-[10px] md:text-xs font-mono text-foreground truncate flex-1 min-w-0">
                                         {getModelDisplayName(option.model)}
                                       </span>
-                                      <span className="text-[10px] text-muted-foreground ml-auto">
+                                      <span className="text-[9px] md:text-[10px] text-muted-foreground ml-auto shrink-0 hidden sm:inline">
                                         {option.name}
                                       </span>
                                     </label>
@@ -676,13 +682,13 @@ export function FeatureBindingPanel() {
 
       {/* Status Summary */}
       {configuredCount < FEATURE_CONFIGS.length && (
-        <div className="flex items-start gap-3 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
-          <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-          <div className="text-xs">
+        <div className="flex items-start gap-1.5 md:gap-3 p-1.5 md:p-3 bg-destructive/10 border border-destructive/30 rounded-lg shrink-0">
+          <AlertCircle className="h-3 w-3 md:h-4 md:w-4 text-destructive mt-0.5 shrink-0" />
+          <div className="text-[9px] md:text-xs flex-1 min-w-0">
             <p className="font-medium text-destructive">
               部分服务未配置
             </p>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-muted-foreground mt-0.5 md:mt-1">
               请在上方为每个功能选择「供应商/模型」，并确保对应供应商已填写 API Key。
             </p>
           </div>
@@ -690,7 +696,7 @@ export function FeatureBindingPanel() {
       )}
 
       {/* Help text */}
-      <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg space-y-2">
+      <div className="text-[9px] md:text-xs text-muted-foreground bg-muted/50 p-1.5 md:p-3 rounded-lg space-y-1 md:space-y-2 shrink-0">
         <p>
           <strong>💡 多模型轮询：</strong>
           每个功能可选择多个模型，请求将按顺序分配到各模型（每次间隔 3 秒），避免单一 API 限流。

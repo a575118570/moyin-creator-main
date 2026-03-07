@@ -178,16 +178,58 @@
 @layer base {
   * {
     @apply border-border;
+    box-sizing: border-box;
   }
+  
+  html {
+    /* 基础字体大小，会根据屏幕尺寸调整 */
+    font-size: 16px;
+    /* 平滑滚动 */
+    scroll-behavior: smooth;
+  }
+  
   body {
     @apply bg-background text-foreground;
     margin: 0;
-    overscroll-behavior-x: contain;
+    padding: 0;
+    overscroll-behavior-x: none;
+    overscroll-behavior-y: none;
     font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    /* 响应式字体大小 */
+    font-size: clamp(14px, 4vw, 16px);
+    line-height: 1.5;
+    /* Prevent text size adjustment on mobile */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* Prevent dragging/moving on mobile */
+    touch-action: pan-y;
+    -webkit-user-select: none;
+    user-select: none;
+    /* Prevent pull-to-refresh and overscroll */
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
   }
   #root {
     height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile */
     width: 100vw;
+    width: 100dvw; /* Dynamic viewport width for mobile */
+    /* Prevent horizontal scroll on mobile */
+    overflow-x: hidden;
+    overflow-y: auto;
+    /* Prevent address bar from showing */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Prevent dragging */
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Safe area support for mobile devices */
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
@@ -214,6 +256,38 @@
 }
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
+}
+
+/* 全局隐藏所有滚动条 - 仅针对可滚动元素 */
+html,
+body,
+[class*="overflow"],
+[class*="scroll"],
+div,
+section,
+main,
+aside,
+nav,
+article {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  -webkit-overflow-scrolling: touch; /* 确保滚动功能仍然可用 */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+[class*="overflow"]::-webkit-scrollbar,
+[class*="scroll"]::-webkit-scrollbar,
+div::-webkit-scrollbar,
+section::-webkit-scrollbar,
+main::-webkit-scrollbar,
+aside::-webkit-scrollbar,
+nav::-webkit-scrollbar,
+article::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+  width: 0;
+  height: 0;
+  background: transparent;
 }
 
 /* Brand gradient */
@@ -253,6 +327,310 @@
 }
 #moyin-right-panel {
   min-width: 150px !important;
+}
+
+/* Mobile responsive styles - 多尺寸适配 */
+/* 小屏手机 (320px - 375px) */
+@media (max-width: 375px) {
+  /* 基础字体大小 */
+  html {
+    font-size: 14px;
+  }
+  
+  /* 容器内边距 */
+  .container,
+  [class*="px-"] {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+  
+  /* 卡片间距 */
+  [class*="gap-"] {
+    gap: 0.5rem !important;
+  }
+  
+  /* 按钮文字 */
+  button {
+    font-size: 0.875rem !important;
+    padding: 0.5rem 0.75rem !important;
+  }
+  
+  /* 标题大小 */
+  h1 { font-size: 1.5rem !important; }
+  h2 { font-size: 1.25rem !important; }
+  h3 { font-size: 1.125rem !important; }
+}
+
+/* 中等手机 (376px - 480px) */
+@media (min-width: 376px) and (max-width: 480px) {
+  html {
+    font-size: 15px;
+  }
+  
+  .container,
+  [class*="px-"] {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}
+
+/* 大屏手机和平板 (481px - 768px) */
+@media (min-width: 481px) and (max-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+/* 通用移动端样式 (最大768px) */
+@media (max-width: 768px) {
+  /* Hide resizable handles on mobile */
+  [data-panel-resize-handle] {
+    display: none !important;
+  }
+  
+  /* Hide desktop ResizablePanelGroup on mobile */
+  [data-panel-group-direction="horizontal"] {
+    display: none !important;
+  }
+  
+  /* Ensure full width on mobile */
+  #moyin-left-panel,
+  #moyin-center-panel,
+  #moyin-right-panel {
+    max-width: 100% !important;
+    min-width: 100% !important;
+  }
+  
+  /* Prevent text overflow */
+  * {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  
+  /* 响应式字体大小 */
+  body {
+    font-size: clamp(14px, 4vw, 16px);
+  }
+  
+  /* Touch-friendly button sizes */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+    font-size: clamp(0.875rem, 3vw, 1rem);
+    padding: 0.625rem 1rem;
+  }
+  
+  /* 输入框适配 */
+  input,
+  textarea,
+  select {
+    font-size: clamp(16px, 4vw, 18px) !important; /* 防止iOS自动缩放 */
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+  }
+  
+  /* 卡片和容器适配 */
+  [class*="card"],
+  [class*="Card"] {
+    padding: clamp(0.75rem, 3vw, 1.5rem) !important;
+    margin: clamp(0.5rem, 2vw, 1rem) !important;
+  }
+  
+  /* 间距适配 */
+  [class*="gap-"] {
+    gap: clamp(0.5rem, 2vw, 1rem) !important;
+  }
+  
+  [class*="space-"] > * + * {
+    margin-top: clamp(0.5rem, 2vw, 1rem) !important;
+  }
+  
+  /* 文字大小适配 */
+  .text-xs { font-size: clamp(0.625rem, 2.5vw, 0.75rem) !important; }
+  .text-sm { font-size: clamp(0.75rem, 3vw, 0.875rem) !important; }
+  .text-base { font-size: clamp(0.875rem, 3.5vw, 1rem) !important; }
+  .text-lg { font-size: clamp(1rem, 4vw, 1.125rem) !important; }
+  .text-xl { font-size: clamp(1.125rem, 4.5vw, 1.25rem) !important; }
+  
+  /* 标题适配 */
+  h1 { font-size: clamp(1.5rem, 6vw, 2rem) !important; }
+  h2 { font-size: clamp(1.25rem, 5vw, 1.5rem) !important; }
+  h3 { font-size: clamp(1.125rem, 4.5vw, 1.25rem) !important; }
+  
+  /* 图标大小适配 */
+  [class*="lucide"],
+  svg {
+    width: clamp(16px, 4vw, 20px) !important;
+    height: clamp(16px, 4vw, 20px) !important;
+  }
+  
+  /* 表格适配 */
+  table {
+    font-size: clamp(0.75rem, 3vw, 0.875rem) !important;
+  }
+  
+  /* 列表适配 */
+  ul, ol {
+    padding-left: clamp(1rem, 4vw, 1.5rem) !important;
+  }
+  
+  /* 改善滚动体验 */
+  .overflow-auto,
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+  
+  /* 隐藏地址栏 */
+  html {
+    height: 100%;
+    height: -webkit-fill-available;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    touch-action: pan-y;
+  }
+  
+  body {
+    height: 100%;
+    height: -webkit-fill-available;
+    height: 100dvh;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overscroll-behavior: none;
+    overscroll-behavior-y: none;
+    overscroll-behavior-x: none;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* 确保全屏 */
+  #root {
+    height: 100vh;
+    height: 100dvh;
+    height: -webkit-fill-available;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    touch-action: pan-y;
+  }
+  
+  /* 防止拖动 */
+  * {
+    -webkit-user-drag: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* 允许输入框文本选择 */
+  input,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  
+  /* 防止图片拖动 */
+  img {
+    -webkit-user-drag: none;
+    max-width: 100%;
+    height: auto;
+  }
+  
+  /* 交互元素可用 */
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    pointer-events: auto;
+  }
+  
+  /* 导航栏适配 */
+  nav {
+    padding: clamp(0.5rem, 2vw, 1rem) !important;
+  }
+  
+  /* 底部导航栏适配 */
+  [class*="bottom-0"],
+  [class*="fixed bottom"] {
+    height: clamp(56px, 14vw, 64px) !important;
+    padding: clamp(0.5rem, 2vw, 0.75rem) !important;
+  }
+  
+  /* 顶部栏适配 */
+  [class*="h-10"],
+  [class*="h-12"],
+  [class*="h-16"] {
+    height: clamp(40px, 10vw, 64px) !important;
+  }
+  
+  /* 确保内容区域可滚动 */
+  [class*="overflow-auto"],
+  [class*="overflow-y-auto"] {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  /* 服务映射功能卡片列表 - 确保不超出屏幕 */
+  [class*="FeatureBindingPanel"] {
+    max-height: calc(100vh - 180px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  
+  [class*="FeatureBindingPanel"] > div[class*="grid"] {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    max-height: calc(100vh - 280px) !important;
+  }
+  
+  /* 功能卡片紧凑显示 - 移动端 */
+  [class*="rounded-lg border"][class*="bg-primary/5"],
+  [class*="rounded-lg border"][class*="bg-destructive/5"] {
+    min-height: auto !important;
+  }
+  
+  /* 设置面板内容区域 - 确保不超出 */
+  [class*="TabsContent"] {
+    max-height: calc(100vh - 120px) !important;
+    overflow: hidden !important;
+  }
+  
+  /* 设置面板内部滚动区域 */
+  [class*="TabsContent"] > div[class*="overflow-y-auto"] {
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+  
+  /* 确保功能卡片列表不产生水平滚动 */
+  [class*="grid"][class*="gap"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+  
+  /* 功能卡片头部 - 紧凑显示 */
+  [class*="rounded-lg border"] > div[class*="flex items-center"][class*="cursor-pointer"] {
+    padding: 0.5rem 0.75rem !important;
+    min-height: auto !important;
+  }
+  
+  /* 功能卡片展开内容 - 限制高度 */
+  [class*="border-t border-border/50"] {
+    max-height: 40vh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Timeline track styles */

@@ -33,55 +33,16 @@ export interface IProvider {
  * Default provider templates
  * 默认供应商模板
  * 
- * 核心供应商：
- * 1. 魔因API (memefast) - 全功能 AI 中转（推荐），支持文本/图片/视频/识图
- * 2. RunningHub - 视角切换/多角度生成
- * 3. 云雾API (yunwu) - AI接口聚合管理服务，支持 GPT/Claude/Gemini/图片/视频
+ * 说明：
+ * - 为了支持白标/私有化交付，这里不内置任何默认商业供应商模板。
+ * - 供应商需要由用户在「设置 → API 管理」中自行添加（通常使用 custom/OpenAI 兼容接口）。
  */
 export const DEFAULT_PROVIDERS: Omit<IProvider, 'id' | 'apiKey'>[] = [
   {
-    platform: 'memefast',
-    name: '魔因API',
-    baseUrl: 'https://memefast.top',
-    model: [
-      'deepseek-v3.2',
-      'glm-4.7',
-      'gemini-3-pro-preview',
-      'gemini-3-pro-image-preview',
-      'gpt-image-1.5',
-      'doubao-seedance-1-5-pro-251215',
-      'veo3.1',
-      'sora-2-all',
-      'wan2.6-i2v',
-      'grok-video-3-10s',
-      'claude-haiku-4-5-20251001',
-    ],
-    capabilities: ['text', 'vision', 'image_generation', 'video_generation'],
-  },
-  {
-    platform: 'runninghub',
-    name: 'RunningHub',
-    baseUrl: 'https://www.runninghub.cn/openapi/v2',
-    model: ['2009613632530812930'],
-    capabilities: ['image_generation', 'vision'],
-  },
-  {
-    platform: 'yunwu',
-    name: '云雾API',
-    baseUrl: 'https://yunwu.apifox.cn',
-    model: [
-      'gpt-4o',
-      'gpt-4o-mini',
-      'gpt-4-turbo',
-      'claude-3-5-sonnet-20241022',
-      'claude-3-opus-20240229',
-      'gemini-pro',
-      'gemini-2.5-flash',
-      'dall-e-3',
-      'flux-1-dev',
-      'flux-1-schnell',
-    ],
-    capabilities: ['text', 'vision', 'image_generation', 'video_generation'],
+    platform: 'custom',
+    name: '自定义',
+    baseUrl: '',
+    model: [],
   },
 ];
 
@@ -109,6 +70,8 @@ export function classifyModelByName(modelName: string): ModelCapability[] {
     'dall-e', 'dalle', 'flux', 'midjourney', 'imagen', 'cogview',
     'gpt-image', 'ideogram', 'sd3', 'stable-diffusion', 'sdxl',
     'playground', 'recraft', 'kolors',
+    // ByteDance Doubao image models
+    'seedream',
   ];
   if (imageGenPatterns.some(p => name.includes(p))) return ['image_generation'];
   // "xxx-image-preview" 类（如 gemini-3-pro-image-preview）

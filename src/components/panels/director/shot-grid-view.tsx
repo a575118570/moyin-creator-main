@@ -757,11 +757,13 @@ export function ShotGridView({ onGenerateImage, onGenerateVideo }: ShotGridViewP
                   </div>
 
                   {activeShot.videoUrl || activeShot.interval?.videoUrl ? (
-                    <video
-                      src={activeShot.videoUrl || activeShot.interval?.videoUrl}
-                      controls
-                      className="w-full aspect-video bg-black rounded border border-zinc-700"
-                    />
+                    <div className="w-full aspect-video bg-black rounded border border-zinc-700 overflow-hidden flex items-center justify-center">
+                      <video
+                        src={activeShot.videoUrl || activeShot.interval?.videoUrl}
+                        controls
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
                   ) : (
                     <div className="w-full aspect-video bg-zinc-900/50 rounded border border-dashed border-zinc-800 flex items-center justify-center">
                       <span className="text-xs text-zinc-600 font-mono">预览区域</span>

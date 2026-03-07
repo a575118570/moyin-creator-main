@@ -9,6 +9,8 @@ import { generateUUID } from "@/lib/utils";
 export interface Project {
   id: string;
   name: string;
+  /** 项目封面图（local-image:// 或 http://） */
+  thumbnail?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -21,13 +23,15 @@ interface ProjectStore {
   renameProject: (id: string, name: string) => void;
   deleteProject: (id: string) => void;
   setActiveProject: (id: string | null) => void;
+  /** 更新项目封面图 */
+  setProjectThumbnail: (id: string, thumbnail: string) => void;
   ensureDefaultProject: () => void;
 }
 
 // Default project for desktop app
 const DEFAULT_PROJECT: Project = {
   id: "default-project",
-  name: "魔因漫创项目",
+  name: "漫果AI项目",
   createdAt: Date.now(),
   updatedAt: Date.now(),
 };
@@ -61,6 +65,7 @@ export const useProjectStore = create<ProjectStore>()(
         const newProject: Project = {
           id: generateUUID(),
           name: name?.trim() || `新项目 ${new Date().toLocaleDateString('zh-CN')}`,
+          thumbnail: undefined,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         };
@@ -110,6 +115,18 @@ export const useProjectStore = create<ProjectStore>()(
             activeProjectId: project?.id || null,
             activeProject: project,
           };
+        });
+      },
+      setProjectThumbnail: (id, thumbnail) => {
+        set((state) => {
+          const projects = state.projects.map((p) =>
+            p.id === id ? { ...p, thumbnail, updatedAt: Date.now() } : p
+          );
+          const activeProject =
+            state.activeProject?.id === id
+              ? { ...state.activeProject, thumbnail, updatedAt: Date.now() }
+              : state.activeProject;
+          return { projects, activeProject };
         });
       },
     }),

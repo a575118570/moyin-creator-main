@@ -14,6 +14,8 @@ import { useScriptStore } from "@/stores/script-store";
 import { useMediaPanelStore, stages } from "@/stores/media-panel-store";
 import { Cloud, CloudOff, Loader2, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLicenseStore } from "@/stores/license-store";
+import { formatRemaining, useTrialStore } from "@/stores/trial-store";
 
 export type SaveStatus = "saved" | "saving" | "unsaved";
 
@@ -21,6 +23,8 @@ export function ProjectHeader() {
   const { activeProject } = useProjectStore();
   const { activeStage } = useMediaPanelStore();
   const scriptStore = useScriptStore();
+  const licenseValid = useLicenseStore((s) => s.status.valid);
+  const trialStatus = useTrialStore((s) => s.getStatus)();
   
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -68,19 +72,19 @@ export function ProjectHeader() {
   const currentStageConfig = stages.find(s => s.id === activeStage);
 
   return (
-    <div className="h-10 bg-[#0f0f0f] border-b border-zinc-800 px-4 flex items-center justify-between shrink-0">
+    <div className="h-10 bg-[#0f0f0f] border-b border-zinc-800 px-2 md:px-4 flex items-center justify-between shrink-0">
       {/* Left: Project Name + Stage */}
-      <div className="flex items-center gap-3">
-        <span className="text-sm font-medium text-white truncate max-w-[200px]">
+      <div className="flex items-center gap-1 md:gap-3 flex-1 min-w-0">
+        <span className="text-xs md:text-sm font-medium text-white truncate max-w-[120px] md:max-w-[200px]">
           {activeProject?.name || "未命名项目"}
         </span>
         {currentStageConfig && (
           <>
-            <span className="text-zinc-700">/</span>
-            <span className="text-xs text-zinc-500 font-mono">
+            <span className="text-zinc-700 hidden md:inline">/</span>
+            <span className="text-[10px] md:text-xs text-zinc-500 font-mono hidden sm:inline">
               {currentStageConfig.phase}
             </span>
-            <span className="text-xs text-zinc-400">
+            <span className="text-[10px] md:text-xs text-zinc-400 hidden md:inline">
               {currentStageConfig.label}
             </span>
           </>
@@ -88,7 +92,12 @@ export function ProjectHeader() {
       </div>
 
       {/* Right: Save Status */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 md:gap-2 shrink-0">
+        {!licenseValid && trialStatus.active && (
+          <div className="px-1.5 md:px-2 py-0.5 md:py-1 rounded text-[9px] md:text-[10px] font-mono text-amber-300 bg-amber-500/10 border border-amber-500/20 hidden sm:flex">
+            试用剩余 {formatRemaining(trialStatus.remainingMs)}
+          </div>
+        )}
         <SaveStatusIndicator status={saveStatus} />
       </div>
     </div>
@@ -99,7 +108,7 @@ function SaveStatusIndicator({ status }: { status: SaveStatus }) {
   return (
     <div
       className={cn(
-        "flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono uppercase tracking-wider transition-colors",
+        "flex items-center gap-1 md:gap-1.5 px-1.5 md:px-2 py-0.5 md:py-1 rounded text-[9px] md:text-[10px] font-mono uppercase tracking-wider transition-colors",
         status === "saved" && "text-green-500/70 bg-green-500/5",
         status === "saving" && "text-yellow-500/70 bg-yellow-500/5",
         status === "unsaved" && "text-zinc-500 bg-zinc-800/50"
@@ -107,20 +116,20 @@ function SaveStatusIndicator({ status }: { status: SaveStatus }) {
     >
       {status === "saved" && (
         <>
-          <Check className="w-3 h-3" />
-          <span>Saved</span>
+          <Check className="w-2.5 h-2.5 md:w-3 md:h-3" />
+          <span className="hidden sm:inline">Saved</span>
         </>
       )}
       {status === "saving" && (
         <>
-          <Loader2 className="w-3 h-3 animate-spin" />
-          <span>Saving...</span>
+          <Loader2 className="w-2.5 h-2.5 md:w-3 md:h-3 animate-spin" />
+          <span className="hidden sm:inline">Saving...</span>
         </>
       )}
       {status === "unsaved" && (
         <>
-          <CloudOff className="w-3 h-3" />
-          <span>Unsaved</span>
+          <CloudOff className="w-2.5 h-2.5 md:w-3 md:h-3" />
+          <span className="hidden sm:inline">Unsaved</span>
         </>
       )}
     </div>

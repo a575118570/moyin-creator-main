@@ -129,10 +129,14 @@ export const MODEL_DISPLAY_NAMES: Record<string, string> = {
   'ideogram_generate_V_2_TURBO': 'Ideogram V2 Turbo',
 
   // --- Doubao / 豆包 / Seedream ---
-  'doubao-seedream-4-0-250828': 'Seedream 4.0',
-  'doubao-seedream-4-5-251128': 'Seedream 4.5',
-  'doubao-seedream-3-0-t2i-250415': 'Seedream 3.0',
-  'doubao-seededit-3-0-i2i-250628': 'SeedEdit 3.0 (图生图)',
+  'doubao-seedream-4-0-250828': '豆包 SeDream 4.0（文生图/多图融合）',
+  'doubao-seedream-4-5-251128': '豆包 SeDream 4.5（文生图/多图融合）',
+  'doubao-seedream-3-0-t2i-250415': '豆包 SeDream 3.0（文生图）',
+  'doubao-seedream-5-0-260128': '豆包 SeDream 5.0（文生图/多图融合）',
+  // ByteDance 别名（与 doubao-seedream-* 等价）
+  'bytedance-seedream-v3': '豆包 SeDream V3（文生图）',
+  'bytedance-seedream-v4': '豆包 SeDream V4（文生图/多图融合）',
+  'bytedance-seedream-v4.5': '豆包 SeDream V4.5（文生图/多图融合）',
 
   // --- Kling / 可灵 ---
   'kling-image': 'Kling 图片生成',

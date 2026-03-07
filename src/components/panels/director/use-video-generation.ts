@@ -513,7 +513,7 @@ async function callUnifiedVideoApi(
 
   // 检测是否为云雾API
   const isYunwu = baseUrl.includes('yunwu');
-  
+
   let submitData: any = null;
   let submitError: Error | null = null;
   for (const submitUrl of submitUrls) {
@@ -582,21 +582,21 @@ async function callUnifiedVideoApi(
       
       // 如果还是失败，尝试X-API-Key header
       const keyHeaderResp = await fetch(submitUrl.replace(baseUrl, cleanBaseUrl), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
           'X-API-Key': apiKey,
-        },
-        body: JSON.stringify(body),
-      });
+      },
+      body: JSON.stringify(body),
+    });
       
       if (keyHeaderResp.ok) {
         submitData = await keyHeaderResp.json();
-        submitError = null;
+      submitError = null;
         console.log('[VideoGen] Yunwu API: X-API-Key format succeeded');
-        break;
-      }
+      break;
+    }
     }
     
     if (resp.status === 404 || resp.status === 405) {
@@ -682,8 +682,38 @@ async function callVolcVideoApi(
   /** Seedance 2.0: 音频引用 URL 列表 */
   audioRefs?: string[],
 ): Promise<string> {
-  // 清理baseUrl：移除末尾的斜杠和可能的/v1后缀，避免路径重复
-  const cleanBaseUrl = baseUrl.replace(/\/+$/, '').replace(/\/v\d+$/, '');
+  // 判断是否为火山方舟官方API
+  const isOfficialApi = baseUrl.includes('/api/v3') || baseUrl.includes('ark.cn-beijing.volces.com') || baseUrl.includes('ark.volces.com');
+  
+  // 根据是否为官方API，使用不同的Base URL处理方式
+  let cleanBaseUrl: string;
+  if (isOfficialApi) {
+    // 官方API：规范化Base URL
+    cleanBaseUrl = baseUrl.replace(/\/+$/, ''); // 移除末尾斜杠
+    
+    // 如果包含 /api/v3，保留它（但移除后面的内容）
+    if (cleanBaseUrl.includes('/api/v3')) {
+      // 只保留到 /api/v3
+      const match = cleanBaseUrl.match(/^(https?:\/\/[^\/]+(?:\/[^\/]+)*\/api\/v3)/);
+      cleanBaseUrl = match ? match[1] : cleanBaseUrl.split('/api/v3')[0] + '/api/v3';
+    } else if (cleanBaseUrl.includes('/api') && !cleanBaseUrl.includes('/api/v3')) {
+      // 如果只有 /api，替换为 /api/v3
+      cleanBaseUrl = cleanBaseUrl.replace(/\/api(\/.*)?$/, '/api/v3');
+    } else {
+      // 如果没有 /api，添加 /api/v3
+      cleanBaseUrl = `${cleanBaseUrl}/api/v3`;
+    }
+  } else {
+    // 代理API：移除末尾的斜杠和可能的/v1后缀，避免路径重复
+    cleanBaseUrl = baseUrl.replace(/\/+$/, '').replace(/\/v\d+$/, '');
+  }
+  
+  console.log('[VideoGen] Volc API Detection:', {
+    baseUrl,
+    cleanBaseUrl,
+    isOfficialApi,
+    model,
+  });
   // 构建 content 数组（Volcengine 格式: text + image_url）
   const content: Array<Record<string, unknown>> = [];
 
@@ -732,18 +762,40 @@ async function callVolcVideoApi(
     }
   }
 
-  const requestBody = { model, content };
+  // 检测是否为带日期后缀的新版本模型（需要使用 content 而不是 contents）
+  // 带日期后缀的模型：doubao-seedance-*-*-*-251215, doubao-seedance-*-*-*-251015, doubao-seedance-*-*-*-250528, doubao-seedance-*-*-*-250428
+  const isNewVersionModel = isOfficialApi && /-\d{6}$/.test(model); // 匹配以6位数字结尾的模型ID
+  
+  // 根据模型版本选择字段名：新版本使用 content（单数），旧版本使用 contents（复数）
+  const requestBody: Record<string, unknown> = { model };
+  if (isNewVersionModel) {
+    // 带日期后缀的新版本模型使用 content（单数）数组
+    requestBody.content = content;
+    console.log('[VideoGen] Using new version format: content (singular)');
+  } else {
+    // 旧版本模型使用 contents（复数）数组
+    requestBody.contents = content;
+    console.log('[VideoGen] Using old version format: contents (plural)');
+  }
 
   // 检测是否为云雾API
   const isYunwu = baseUrl.includes('yunwu');
 
-  console.log('[VideoGen] Volc format → POST /volc/v1/contents/generations/tasks', {
+  // 根据API类型选择不同的端点
+  const submitEndpoint = isOfficialApi 
+    ? `${cleanBaseUrl}/contents/generations/tasks`
+    : `${cleanBaseUrl}/volc/v1/contents/generations/tasks`;
+
+  console.log('[VideoGen] Volc format →', {
+    endpoint: isOfficialApi ? 'POST /api/v3/contents/generations/tasks' : 'POST /volc/v1/contents/generations/tasks',
+    submitUrl: submitEndpoint,
     model,
     resolution,
     aspectRatio,
     duration,
     imageCount: imageWithRoles.filter(i => i.url).length,
     isYunwu,
+    isOfficialApi,
   });
 
   // 云雾API可能需要不同的Authorization格式
@@ -758,7 +810,7 @@ async function callVolcVideoApi(
     headers['Authorization'] = `Bearer ${apiKey}`;
   }
 
-  const submitResponse = await fetch(`${cleanBaseUrl}/volc/v1/contents/generations/tasks`, {
+  const submitResponse = await fetch(submitEndpoint, {
     method: 'POST',
     headers,
     body: JSON.stringify(requestBody),
@@ -784,7 +836,11 @@ async function callVolcVideoApi(
         'Authorization': apiKey,
       };
       
-      const altResp = await fetch(`${cleanBaseUrl}/volc/v1/contents/generations/tasks`, {
+      const altEndpoint = isOfficialApi 
+        ? `${cleanBaseUrl}/contents/generations/tasks`
+        : `${cleanBaseUrl}/volc/v1/contents/generations/tasks`;
+      
+      const altResp = await fetch(altEndpoint, {
         method: 'POST',
         headers: altHeaders,
         body: JSON.stringify(requestBody),
@@ -797,20 +853,24 @@ async function callVolcVideoApi(
         if (!taskId) throw new Error('返回空的任务 ID');
         
         // 继续使用轮询逻辑（使用直接API Key格式）
-        return await pollVolcTaskWithAuth(apiKey, cleanBaseUrl, taskId, onProgress, keyManager, 'direct');
+        return await pollVolcTaskWithAuth(apiKey, cleanBaseUrl, taskId, onProgress, keyManager, 'direct', isOfficialApi);
       }
       
       // 如果还是失败，尝试X-API-Key header
-      const keyHeaderResp = await fetch(`${cleanBaseUrl}/volc/v1/contents/generations/tasks`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-API-Key': apiKey,
-        },
-        body: JSON.stringify(requestBody),
-      });
+      const keyHeaderEndpoint = isOfficialApi 
+        ? `${cleanBaseUrl}/contents/generations/tasks`
+        : `${cleanBaseUrl}/volc/v1/contents/generations/tasks`;
       
+      const keyHeaderResp = await fetch(keyHeaderEndpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+          'X-API-Key': apiKey,
+    },
+    body: JSON.stringify(requestBody),
+  });
+
       if (keyHeaderResp.ok) {
         const keyData = await keyHeaderResp.json();
         console.log('[VideoGen] Yunwu API: X-API-Key format succeeded for Volc');
@@ -818,7 +878,7 @@ async function callVolcVideoApi(
         if (!taskId) throw new Error('返回空的任务 ID');
         
         // 继续使用轮询逻辑（使用X-API-Key格式）
-        return await pollVolcTaskWithAuth(apiKey, cleanBaseUrl, taskId, onProgress, keyManager, 'X-API-Key');
+        return await pollVolcTaskWithAuth(apiKey, cleanBaseUrl, taskId, onProgress, keyManager, 'X-API-Key', isOfficialApi);
       }
     }
     
@@ -832,8 +892,8 @@ async function callVolcVideoApi(
   const taskId = submitData.id?.toString();
   if (!taskId) throw new Error('返回空的任务 ID');
 
-  // 轮询: GET /volc/v1/contents/generations/tasks/{taskId}
-  return await pollVolcTaskWithAuth(apiKey, cleanBaseUrl, taskId, onProgress, keyManager, 'Bearer');
+  // 轮询: 根据API类型选择不同的端点
+  return await pollVolcTaskWithAuth(apiKey, cleanBaseUrl, taskId, onProgress, keyManager, 'Bearer', isOfficialApi);
 }
 
 // 辅助函数：轮询Volc任务状态，支持不同的Authorization格式
@@ -844,6 +904,7 @@ async function pollVolcTaskWithAuth(
   onProgress?: (progress: number) => void,
   keyManager?: { handleError: (status: number) => boolean },
   authFormat: 'Bearer' | 'direct' | 'X-API-Key' = 'Bearer',
+  isOfficialApi: boolean = false,
 ): Promise<string> {
   const pollInterval = 5000;
   const maxAttempts = 180; // 15分钟
@@ -864,11 +925,16 @@ async function pollVolcTaskWithAuth(
     return headers;
   };
 
+  // 根据API类型选择不同的轮询端点
+  const pollEndpoint = isOfficialApi
+    ? `${baseUrl}/contents/generations/tasks/${taskId}`
+    : `${baseUrl}/volc/v1/contents/generations/tasks/${taskId}`;
+
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     onProgress?.(Math.min(20 + Math.floor((attempt / maxAttempts) * 80), 99));
 
     const statusResponse = await fetch(
-      `${baseUrl}/volc/v1/contents/generations/tasks/${taskId}`,
+      pollEndpoint,
       {
         method: 'GET',
         headers: getHeaders(),

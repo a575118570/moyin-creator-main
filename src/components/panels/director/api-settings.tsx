@@ -41,13 +41,11 @@ export function APISettings({ collapsed = true, onToggleCollapse }: APISettingsP
   } = useAPIConfigStore();
 
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({
-    memefast: false,
     runninghub: false,
   });
 
   const [testing, setTesting] = useState<ProviderId | null>(null);
   const [testResults, setTestResults] = useState<Record<string, boolean | null>>({
-    memefast: null,
     runninghub: null,
   });
 
@@ -76,12 +74,6 @@ export function APISettings({ collapsed = true, onToggleCollapse }: APISettingsP
     description: string;
     services: string[];
   }> = [
-    {
-      id: "memefast",
-      name: "魔因API",
-      description: "全功能 AI 中转，支持对话/图片/视频/图片理解",
-      services: ["对话", "图片", "视频", "图片理解"],
-    },
     {
       id: "runninghub",
       name: "RunningHub",

@@ -34,15 +34,16 @@ const buildEndpoint = (baseUrl: string, path: string) => {
 };
 
 // Aspect ratio to pixel dimension mapping (doubao-seedream 等模型需要像素尺寸)
+// 最小尺寸要求：至少 3686400 像素 (1920x1920)
 const ASPECT_RATIO_DIMS: Record<string, { width: number; height: number }> = {
-  '1:1': { width: 1024, height: 1024 },
-  '16:9': { width: 1280, height: 720 },
-  '9:16': { width: 720, height: 1280 },
-  '4:3': { width: 1152, height: 864 },
-  '3:4': { width: 864, height: 1152 },
-  '3:2': { width: 1248, height: 832 },
-  '2:3': { width: 832, height: 1248 },
-  '21:9': { width: 1512, height: 648 },
+  '1:1': { width: 1920, height: 1920 },  // 3686400 像素
+  '16:9': { width: 2560, height: 1440 },  // 3686400 像素
+  '9:16': { width: 1440, height: 2560 },  // 3686400 像素
+  '4:3': { width: 2560, height: 1920 },  // 4915200 像素
+  '3:4': { width: 1920, height: 2560 },  // 4915200 像素
+  '3:2': { width: 2560, height: 1707 },  // 4369920 像素
+  '2:3': { width: 1707, height: 2560 },  // 4369920 像素
+  '21:9': { width: 2932, height: 1257 }, // 3685524 像素（满足最小要求）
 };
 
 /**
@@ -186,16 +187,22 @@ async function submitViaChatCompletions(
     ? ` Output the image at ${targetDims.width}x${targetDims.height} pixels resolution.`
     : '';
 
-  // Build messages
-  const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
-    { type: 'text', text: `Generate an image with aspect ratio ${aspectRatio}.${sizeInstruction} ${prompt}` },
-  ];
-  // Attach reference images if any
+  // Build messages (order matters for many multimodal models)
+  // Put reference images FIRST, then the instruction text to increase adherence.
+  const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
   if (referenceImages && referenceImages.length > 0) {
     for (const img of referenceImages) {
       userContent.push({ type: 'image_url', image_url: { url: img } });
     }
   }
+  const noTextConstraint = 'IMPORTANT: NO TEXT, NO WORDS, NO LETTERS, NO CAPTIONS, NO SPEECH BUBBLES, NO SUBTITLES, NO WRITING of any kind.';
+  const refHint = (referenceImages && referenceImages.length > 0)
+    ? 'Use the attached reference images as strict visual identity/style references. Keep faces, hairstyles, and outfits consistent with the references.'
+    : '';
+  userContent.push({
+    type: 'text',
+    text: `Generate an image with aspect ratio ${aspectRatio}.${sizeInstruction} ${refHint} ${noTextConstraint} ${prompt}`.replace(/\s+/g, ' ').trim(),
+  });
 
   const requestBody = {
     model,
@@ -519,12 +526,29 @@ export async function submitGridImageRequest(params: {
 
   // 标准 images/generations 端点
   const endpoint = buildEndpoint(normalizedBase, 'images/generations');
+  
+  // 根据模型决定使用 aspect_ratio 还是 size（像素尺寸）
+  // 豆包模型需要像素尺寸，且必须至少 3686400 像素
   const requestBody: Record<string, unknown> = {
     model,
     prompt,
     n: 1,
-    aspect_ratio: aspectRatio,
   };
+  
+  if (needsPixelSize(model)) {
+    // 豆包模型：使用 size 参数（像素尺寸）
+    const dims = ASPECT_RATIO_DIMS[aspectRatio];
+    if (dims) {
+      requestBody.size = `${dims.width}x${dims.height}`;
+    } else {
+      // 如果找不到对应的尺寸，使用默认 1920x1920
+      requestBody.size = '1920x1920';
+    }
+  } else {
+    // 其他模型：使用 aspect_ratio 参数
+    requestBody.aspect_ratio = aspectRatio;
+  }
+  
   if (resolution) {
     requestBody.resolution = resolution;
   }

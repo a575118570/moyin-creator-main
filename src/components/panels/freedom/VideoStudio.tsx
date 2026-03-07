@@ -412,11 +412,8 @@ export function VideoStudio() {
     addHistoryEntry,
   ]);
 
-  return (
-    <div className="flex h-full">
-      {/* Left: Controls */}
-      <div className="w-[340px] border-r flex flex-col">
-        <ScrollArea className="flex-1">
+  // 控制面板内容（复用）
+  const renderControls = () => (
           <div className="p-4 space-y-5">
             {/* Model Selection */}
             <div className="space-y-2">
@@ -621,11 +618,11 @@ export function VideoStudio() {
               )}
             </Button>
           </div>
-        </ScrollArea>
-      </div>
+  );
 
-      {/* Center: Result */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-muted/30">
+  // 结果区域内容（复用）
+  const renderResult = () => (
+    <div className="flex items-center justify-center p-4 md:p-8 bg-muted/30">
         {videoGenerating ? (
           <div className="flex flex-col items-center gap-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -638,7 +635,7 @@ export function VideoStudio() {
               controls
               autoPlay
               loop
-              className="max-w-full max-h-[calc(100vh-200px)] rounded-lg shadow-lg"
+              className="max-w-full max-h-[calc(100vh-200px)] object-contain rounded-lg shadow-lg"
             />
             <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
               <Button size="sm" variant="secondary" asChild>
@@ -655,6 +652,49 @@ export function VideoStudio() {
             <p className="text-sm">选择模型，输入描述，生成你想要的视频</p>
           </div>
         )}
+    </div>
+  );
+
+  return (
+    <div className="h-full">
+      {/* ========== 手机端布局（独立，不影响桌面端） ========== */}
+      {/* 手机端：垂直布局，可滚动 - 仅在 < 768px 显示 */}
+      <div className="md:hidden flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-3 p-2">
+          {/* 第一个面板：控制面板 */}
+          <div className="w-full min-h-0 flex-shrink-0 border-b pb-3">
+            {renderControls()}
+          </div>
+
+          {/* 第二个面板：结果区 */}
+          <div className="w-full min-h-[300px] flex-shrink-0">
+            {renderResult()}
+          </div>
+
+          {/* 第三个面板：历史记录 */}
+          <div className="w-full min-h-0 flex-shrink-0 border-t pt-3">
+            <GenerationHistory type="video" onSelect={(entry) => {
+              setVideoPrompt(entry.prompt);
+              setSelectedVideoModel(entry.model);
+              setVideoResult(entry.resultUrl);
+            }} />
+          </div>
+        </div>
+      </div>
+
+      {/* ========== 桌面端布局（保持原样，完全不变） ========== */}
+      {/* 桌面端：水平布局 - 仅在 >= 768px 显示 */}
+      <div className="hidden md:flex h-full">
+        {/* Left: Controls */}
+        <div className="w-[340px] border-r flex flex-col">
+          <ScrollArea className="flex-1">
+            {renderControls()}
+          </ScrollArea>
+        </div>
+
+        {/* Center: Result */}
+        <div className="flex-1">
+          {renderResult()}
       </div>
 
       {/* Right: History */}
@@ -664,6 +704,7 @@ export function VideoStudio() {
           setSelectedVideoModel(entry.model);
           setVideoResult(entry.resultUrl);
         }} />
+        </div>
       </div>
     </div>
   );

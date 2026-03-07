@@ -1185,53 +1185,203 @@ async function generateVideoViaVolc(
   apiKey: string,
   baseUrl: string,
 ): Promise<GenerationResult> {
-  const rootBase = getRootBaseUrl(baseUrl);
-  const promptParts = [params.prompt];
-  if (params.resolution) promptParts.push(`--rs ${params.resolution.toLowerCase()}`);
-  if (params.aspectRatio) promptParts.push(`--rt ${params.aspectRatio}`);
-  if (params.duration) promptParts.push(`--dur ${params.duration}`);
-
-  const body = {
+  // 先判断是否为官方API，再处理Base URL
+  // 判断是否为火山方舟官方API（包含 /api/v3 或 ark.cn-beijing.volces.com）
+  const isOfficialApi = baseUrl.includes('/api/v3') || baseUrl.includes('ark.cn-beijing.volces.com') || baseUrl.includes('ark.volces.com');
+  
+  // 根据是否为官方API，使用不同的Base URL处理方式
+  let rootBase: string;
+  if (isOfficialApi) {
+    // 官方API：规范化Base URL，确保正确处理
+    rootBase = baseUrl.replace(/\/+$/, ''); // 移除末尾斜杠
+    
+    // 如果包含 /api/v3，保留它（但移除后面的内容）
+    if (rootBase.includes('/api/v3')) {
+      // 只保留到 /api/v3
+      const match = rootBase.match(/^(https?:\/\/[^\/]+(?:\/[^\/]+)*\/api\/v3)/);
+      rootBase = match ? match[1] : rootBase.split('/api/v3')[0] + '/api/v3';
+    } else if (rootBase.includes('/api') && !rootBase.includes('/api/v3')) {
+      // 如果只有 /api，替换为 /api/v3
+      rootBase = rootBase.replace(/\/api(\/.*)?$/, '/api/v3');
+    } else {
+      // 如果没有 /api，添加 /api/v3
+      rootBase = `${rootBase}/api/v3`;
+    }
+  } else {
+    // 代理API：使用 getRootBaseUrl 移除版本号
+    rootBase = getRootBaseUrl(baseUrl);
+  }
+  
+  console.log('[Volc] API Detection:', {
+    baseUrl,
+    rootBase,
+    isOfficialApi,
     model,
-    content: [{ type: 'text', text: promptParts.join(' ') }],
-  };
-
-  const submitResp = await fetch(`${rootBase}/volc/v1/contents/generations/tasks`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(body),
   });
-  if (!submitResp.ok) {
-    throw toHttpError('Volc submit failed', submitResp.status, await submitResp.text());
-  }
-
-  const submitData = await submitResp.json();
-  const taskId = submitData.id;
-  if (!taskId) throw new Error('Volc 返回空任务 ID');
-
-  const pollUrl = `${rootBase}/volc/v1/contents/generations/tasks/${taskId}`;
-  for (let i = 0; i < VIDEO_POLL_MAX_ATTEMPTS; i++) {
-    await new Promise((r) => setTimeout(r, VIDEO_POLL_INTERVAL));
-    const pollResp = await fetch(pollUrl, {
-      headers: { 'Authorization': `Bearer ${apiKey}` },
+  
+  if (isOfficialApi) {
+    // 检测是否为带日期后缀的新版本模型（需要使用 content 而不是 contents）
+    // 带日期后缀的模型：doubao-seedance-*-*-*-251215, doubao-seedance-*-*-*-251015, doubao-seedance-*-*-*-250528, doubao-seedance-*-*-*-250428
+    const isNewVersionModel = /-\d{6}$/.test(model); // 匹配以6位数字结尾的模型ID
+    
+    // 构建内容数组
+    const contentArray: Array<Record<string, unknown>> = [];
+    
+    // 文本内容：prompt + 内联参数
+    let textContent = params.prompt;
+    if (params.resolution) textContent += ` --rs ${params.resolution.toLowerCase()}`;
+    if (params.aspectRatio) textContent += ` --rt ${params.aspectRatio}`;
+    if (params.duration) textContent += ` --dur ${params.duration}`;
+    
+    contentArray.push({ type: 'text', text: textContent });
+    
+    // 如果有上传文件（图生视频）
+    if (params.uploadFiles && params.uploadFiles.length > 0) {
+      for (const file of params.uploadFiles) {
+        if (file.role === 'single' || file.role === 'first' || file.role === 'last' || file.role === 'reference') {
+          const imageUrl = await toUploadHttpUrl(file);
+          contentArray.push({
+            type: 'image_url',
+            image_url: { url: imageUrl },
+            role: file.role === 'first' ? 'first_frame' : file.role === 'last' ? 'last_frame' : file.role,
+          });
+        }
+      }
+    }
+    
+    // 根据模型版本选择字段名：新版本使用 content（单数），旧版本使用 contents（复数）
+    const body: Record<string, unknown> = {
+      model,
+    };
+    
+    if (isNewVersionModel) {
+      // 带日期后缀的新版本模型使用 content（单数）数组
+      body.content = contentArray;
+      console.log('[Volc] Using new version format: content (singular)');
+    } else {
+      // 旧版本模型使用 contents（复数）数组
+      body.contents = contentArray;
+      console.log('[Volc] Using old version format: contents (plural)');
+    }
+    
+    // 构建正确的API端点
+    // rootBase 已经在上面处理好了，直接使用
+    const apiBase = rootBase.replace(/\/+$/, ''); // 移除末尾斜杠
+    
+    console.log('[Volc] Official API Base URL:', apiBase);
+    const submitUrl = `${apiBase}/contents/generations/tasks`;
+    console.log('[Volc] Submit URL:', submitUrl, 'Model:', model, 'Original baseUrl:', baseUrl);
+    
+    const submitResp = await fetch(submitUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
     });
-    if (!pollResp.ok) continue;
-    const pollData = await pollResp.json();
-    const status = String(pollData.status || '').toLowerCase();
-    if (status === 'succeeded' || status === 'completed' || status === 'success') {
-      const videoUrl = pollData.content?.video_url || extractVideoUrl(pollData);
-      if (!videoUrl) throw new Error('Volc 成功但无视频 URL');
-      return { url: videoUrl, taskId: String(taskId) };
+    
+    if (!submitResp.ok) {
+      const errorText = await submitResp.text();
+      console.error('[Volc] Official API Error:', {
+        status: submitResp.status,
+        url: submitUrl,
+        error: errorText,
+        baseUrl: baseUrl,
+        rootBase: rootBase,
+        apiBase: apiBase,
+      });
+      throw toHttpError('Volc official API submit failed', submitResp.status, errorText);
     }
-    if (status === 'failed' || status === 'expired' || status === 'cancelled' || status === 'error') {
-      throw new Error(pollData.error?.message || pollData.error || 'Volc 视频生成失败');
+    
+    const submitData = await submitResp.json();
+    const taskId = submitData.id || submitData.task_id;
+    if (!taskId) throw new Error('Volc 官方API返回空任务 ID');
+    
+    const pollUrl = `${apiBase}/contents/generations/tasks/${taskId}`;
+    
+    for (let i = 0; i < VIDEO_POLL_MAX_ATTEMPTS; i++) {
+      await new Promise((r) => setTimeout(r, VIDEO_POLL_INTERVAL));
+      const pollResp = await fetch(pollUrl, {
+        headers: { 'Authorization': `Bearer ${apiKey}` },
+      });
+      if (!pollResp.ok) continue;
+      const pollData = await pollResp.json();
+      const status = String(pollData.status || pollData.task_status || '').toLowerCase();
+      
+      if (status === 'succeeded' || status === 'completed' || status === 'success') {
+        const videoUrl = pollData.video_url || pollData.url || pollData.data?.video_url || pollData.content?.video_url || extractVideoUrl(pollData);
+        if (!videoUrl) throw new Error('Volc 官方API成功但无视频 URL');
+        return { url: videoUrl, taskId: String(taskId) };
+      }
+      if (status === 'failed' || status === 'expired' || status === 'cancelled' || status === 'error') {
+        const errorMsg = pollData.error?.message || pollData.message || pollData.error || 'Volc 视频生成失败';
+        throw new Error(errorMsg);
+      }
     }
-  }
+    
+    throw new Error('Volc 官方API视频生成超时');
+  } else {
+    // 使用旧的代理API格式：/volc/v1/contents/generations/tasks
+    const promptParts = [params.prompt];
+    if (params.resolution) promptParts.push(`--rs ${params.resolution.toLowerCase()}`);
+    if (params.aspectRatio) promptParts.push(`--rt ${params.aspectRatio}`);
+    if (params.duration) promptParts.push(`--dur ${params.duration}`);
 
-  throw new Error('Volc 视频生成超时');
+    // Volc / Seedance 视频异步接口要求字段名为 contents（不是 content）
+    const body = {
+      model,
+      contents: [{ type: 'text', text: promptParts.join(' ') }],
+    };
+
+    const proxyUrl = `${rootBase}/volc/v1/contents/generations/tasks`;
+    console.log('[Volc] Proxy API URL:', proxyUrl);
+    
+    const submitResp = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!submitResp.ok) {
+      const errorText = await submitResp.text();
+      console.error('[Volc] Proxy API Error:', {
+        status: submitResp.status,
+        url: proxyUrl,
+        error: errorText,
+        baseUrl: baseUrl,
+        rootBase: rootBase,
+      });
+      throw toHttpError('Volc submit failed', submitResp.status, errorText);
+    }
+
+    const submitData = await submitResp.json();
+    const taskId = submitData.id;
+    if (!taskId) throw new Error('Volc 返回空任务 ID');
+
+    const pollUrl = `${rootBase}/volc/v1/contents/generations/tasks/${taskId}`;
+    for (let i = 0; i < VIDEO_POLL_MAX_ATTEMPTS; i++) {
+      await new Promise((r) => setTimeout(r, VIDEO_POLL_INTERVAL));
+      const pollResp = await fetch(pollUrl, {
+        headers: { 'Authorization': `Bearer ${apiKey}` },
+      });
+      if (!pollResp.ok) continue;
+      const pollData = await pollResp.json();
+      const status = String(pollData.status || '').toLowerCase();
+      if (status === 'succeeded' || status === 'completed' || status === 'success') {
+        const videoUrl = pollData.content?.video_url || extractVideoUrl(pollData);
+        if (!videoUrl) throw new Error('Volc 成功但无视频 URL');
+        return { url: videoUrl, taskId: String(taskId) };
+      }
+      if (status === 'failed' || status === 'expired' || status === 'cancelled' || status === 'error') {
+        throw new Error(pollData.error?.message || pollData.error || 'Volc 视频生成失败');
+      }
+    }
+
+    throw new Error('Volc 视频生成超时');
+  }
 }
 
 async function generateVideoViaWan(

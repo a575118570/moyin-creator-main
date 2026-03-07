@@ -195,7 +195,7 @@ export function ScriptInput({
   };
 
   return (
-    <div className="h-full flex flex-col p-3 space-y-3">
+    <div className="h-full flex flex-col p-3 md:p-3 space-y-3">
       {/* 模式切换 */}
       <Tabs value={mode} onValueChange={(v) => setMode(v as "import" | "create")}>
         <TabsList className="grid w-full grid-cols-2">
@@ -457,10 +457,11 @@ export function ScriptInput({
       </Tabs>
 
       {/* 设置区域 - 根据模式显示不同选项 */}
-      <div className="space-y-3 pt-2 border-t">
+      {/* 手机端和桌面端都显示，但手机端使用更紧凑的布局 */}
+      <div className="space-y-2 md:space-y-3 pt-2 border-t">
         {/* 导入模式：显示语言、场景数量、分镜数量 */}
         {mode === "import" && (
-          <div className="space-y-3">
+          <div className="space-y-2 md:space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">剧本语言</Label>
               <Select
@@ -586,7 +587,7 @@ export function ScriptInput({
 
         {/* 创作模式：显示语言、时长、风格、场景数量、分镜数量 */}
         {mode === "create" && (
-          <div className="space-y-3">
+          <div className="space-y-2 md:space-y-3">
             <div className="grid grid-cols-3 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs">语言</Label>

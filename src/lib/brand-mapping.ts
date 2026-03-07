@@ -22,7 +22,7 @@ export const BRAND_REGISTRY: Record<string, BrandInfo> = {
   google:       { displayName: 'Google',               color: '#4285F4' },
   deepseek:     { displayName: 'DeepSeek',             color: '#4D6BFE' },
   zhipu:        { displayName: 'ChatGLM (智谱)',        color: '#3485FF' },
-  doubao:       { displayName: 'Doubao (豆包)',         color: '#A569FF' },
+  doubao:       { displayName: 'Doubao (豆包/字节)',     color: '#A569FF' },
   kling:        { displayName: 'Kling (可灵)',          color: '#04A6F0' },
   midjourney:   { displayName: 'Midjourney',           color: '#000000' },
   flux:         { displayName: 'Flux',                 color: '#333333' },
@@ -69,6 +69,8 @@ const BRAND_PATTERNS: Array<{ pattern: RegExp; brand: string }> = [
 
   // 豆包 Doubao (ByteDance)
   { pattern: /^(doubao|seed[- ]?oss)/i,                                  brand: 'doubao' },
+  // ByteDance 官方前缀（部分列表会返回 bytedance-seedream-* 这类别名）
+  { pattern: /^bytedance/i,                                              brand: 'doubao' },
   // seedance (豆包视频) — must be before generic seed
   { pattern: /^(doubao-)?seed(ance|dream)/i,                             brand: 'doubao' },
 

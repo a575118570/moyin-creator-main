@@ -492,7 +492,7 @@ export function ShotGroupCard({
               <video
                 src={group.videoUrl}
                 controls
-                className="w-full max-h-48 rounded"
+                className="w-full max-h-48 object-contain rounded"
                 preload="metadata"
               />
             </div>

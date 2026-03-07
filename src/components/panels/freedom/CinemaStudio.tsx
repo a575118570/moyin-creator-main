@@ -92,10 +92,9 @@ export function CinemaStudio() {
     }
   }, [cinemaPrompt, selectedCamera, selectedLens, selectedFocalLength, selectedAperture]);
 
-  return (
-    <div className="flex h-full">
-      {/* Left: Camera Controls */}
-      <div className="w-[420px] border-r flex flex-col">
+  // 控制面板内容（复用）
+  const renderControls = () => (
+    <>
         {/* Camera summary */}
         <div className="p-4 border-b space-y-2">
           <div className="flex items-center gap-2">
@@ -156,10 +155,12 @@ export function CinemaStudio() {
             )}
           </Button>
         </div>
-      </div>
+    </>
+  );
 
-      {/* Center: Result */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-muted/30">
+  // 结果区域内容（复用）
+  const renderResult = () => (
+    <div className="flex items-center justify-center p-4 md:p-8 bg-muted/30">
         {cinemaGenerating ? (
           <div className="flex flex-col items-center gap-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -188,6 +189,50 @@ export function CinemaStudio() {
             <p className="text-xs text-muted-foreground/60">相机参数会自动编译为 AI 提示词</p>
           </div>
         )}
+    </div>
+  );
+
+  return (
+    <div className="h-full">
+      {/* ========== 手机端布局（独立，不影响桌面端） ========== */}
+      {/* 手机端：垂直布局，可滚动 - 仅在 < 768px 显示 */}
+      <div className="md:hidden flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-3 p-2">
+          {/* 第一个面板：控制面板 */}
+          <div className="w-full min-h-0 flex-shrink-0 border-b pb-3 flex flex-col">
+            {renderControls()}
+          </div>
+
+          {/* 第二个面板：结果区 */}
+          <div className="w-full min-h-[300px] flex-shrink-0">
+            {renderResult()}
+          </div>
+
+          {/* 第三个面板：历史记录 */}
+          <div className="w-full min-h-0 flex-shrink-0 border-t pt-3">
+            <GenerationHistory type="cinema" onSelect={(entry) => {
+              setCinemaPrompt(entry.prompt);
+              if (entry.params.camera) setSelectedCamera(entry.params.camera);
+              if (entry.params.lens) setSelectedLens(entry.params.lens);
+              if (entry.params.focalLength) setSelectedFocalLength(entry.params.focalLength);
+              if (entry.params.aperture) setSelectedAperture(entry.params.aperture);
+              setCinemaResult(entry.resultUrl);
+            }} />
+          </div>
+        </div>
+      </div>
+
+      {/* ========== 桌面端布局（保持原样，完全不变） ========== */}
+      {/* 桌面端：水平布局 - 仅在 >= 768px 显示 */}
+      <div className="hidden md:flex h-full">
+        {/* Left: Camera Controls */}
+        <div className="w-[420px] border-r flex flex-col">
+          {renderControls()}
+        </div>
+
+        {/* Center: Result */}
+        <div className="flex-1">
+          {renderResult()}
       </div>
 
       {/* Right: History */}
@@ -200,6 +245,7 @@ export function CinemaStudio() {
           if (entry.params.aperture) setSelectedAperture(entry.params.aperture);
           setCinemaResult(entry.resultUrl);
         }} />
+        </div>
       </div>
     </div>
   );

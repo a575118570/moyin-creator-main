@@ -12,56 +12,100 @@ if (!fs.existsSync(buildDir)) {
   fs.mkdirSync(buildDir, { recursive: true })
 }
 
-// 创建一个现代风格的图标 SVG
-// 紫色渐变背景 + 白色 "魔" 字艺术化设计
+// 创建一个现代风格的水果图标 SVG
+// 渐变背景 + 多种水果组合设计（苹果、橙子、葡萄等）
 const svg = `
 <svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
   <defs>
+    <!-- 背景渐变 -->
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#8B5CF6"/>
-      <stop offset="50%" style="stop-color:#7C3AED"/>
-      <stop offset="100%" style="stop-color:#6D28D9"/>
+      <stop offset="0%" style="stop-color:#FF6B6B"/>
+      <stop offset="50%" style="stop-color:#FF8E53"/>
+      <stop offset="100%" style="stop-color:#FF6B9D"/>
     </linearGradient>
-    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#F472B6"/>
-      <stop offset="100%" style="stop-color:#EC4899"/>
+    <!-- 苹果渐变 -->
+    <linearGradient id="apple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF4757"/>
+      <stop offset="100%" style="stop-color:#EE5A6F"/>
+    </linearGradient>
+    <!-- 橙子渐变 -->
+    <linearGradient id="orange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFA502"/>
+      <stop offset="100%" style="stop-color:#FF6348"/>
+    </linearGradient>
+    <!-- 葡萄渐变 -->
+    <radialGradient id="grape" cx="50%" cy="30%">
+      <stop offset="0%" style="stop-color:#A55EEA"/>
+      <stop offset="100%" style="stop-color:#8854D0"/>
+    </radialGradient>
+    <!-- 叶子渐变 -->
+    <linearGradient id="leaf" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#26DE81"/>
+      <stop offset="100%" style="stop-color:#20BF6B"/>
     </linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.3"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
     </filter>
   </defs>
   
   <!-- 圆角背景 -->
-  <rect x="32" y="32" width="448" height="448" rx="80" fill="url(#bg)" filter="url(#shadow)"/>
+  <rect x="32" y="32" width="448" height="448" rx="90" fill="url(#bg)" filter="url(#shadow)"/>
   
   <!-- 装饰性光效 -->
-  <ellipse cx="180" cy="180" rx="120" ry="80" fill="white" opacity="0.1"/>
+  <ellipse cx="150" cy="150" rx="100" ry="70" fill="white" opacity="0.15"/>
+  <ellipse cx="380" cy="380" rx="80" ry="60" fill="white" opacity="0.1"/>
   
-  <!-- 魔 字的艺术化表现 - 使用几何图形 -->
-  <!-- 上部横线 -->
-  <rect x="140" y="140" width="232" height="24" rx="12" fill="white"/>
+  <!-- 主苹果（中心） -->
+  <ellipse cx="256" cy="280" rx="100" ry="110" fill="url(#apple)" filter="url(#shadow)"/>
+  <!-- 苹果高光 -->
+  <ellipse cx="230" cy="250" rx="35" ry="45" fill="white" opacity="0.4"/>
+  <!-- 苹果叶子 -->
+  <path d="M 256 180 Q 240 160 250 150 Q 260 160 256 180" fill="url(#leaf)" filter="url(#shadow)"/>
+  <path d="M 256 180 Q 270 160 280 150 Q 270 160 256 180" fill="url(#leaf)" filter="url(#shadow)"/>
   
-  <!-- 中间部分 - 广字头 -->
-  <rect x="160" y="180" width="24" height="180" rx="12" fill="white"/>
-  <rect x="160" y="180" width="192" height="24" rx="12" fill="white"/>
+  <!-- 左侧橙子 -->
+  <circle cx="140" cy="320" r="65" fill="url(#orange)" filter="url(#shadow)"/>
+  <!-- 橙子纹理 -->
+  <circle cx="140" cy="320" r="50" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+  <circle cx="140" cy="320" r="40" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
+  <!-- 橙子高光 -->
+  <ellipse cx="125" cy="300" rx="20" ry="25" fill="white" opacity="0.3"/>
   
-  <!-- 林字左边 -->
-  <rect x="200" y="220" width="16" height="100" rx="8" fill="white"/>
-  <rect x="180" y="280" width="56" height="16" rx="8" fill="white"/>
+  <!-- 右侧葡萄串 -->
+  <circle cx="370" cy="250" r="28" fill="url(#grape)" filter="url(#shadow)"/>
+  <circle cx="390" cy="280" r="28" fill="url(#grape)" filter="url(#shadow)"/>
+  <circle cx="350" cy="280" r="28" fill="url(#grape)" filter="url(#shadow)"/>
+  <circle cx="370" cy="310" r="28" fill="url(#grape)" filter="url(#shadow)"/>
+  <!-- 葡萄高光 -->
+  <circle cx="365" cy="245" r="8" fill="white" opacity="0.5"/>
+  <circle cx="385" cy="275" r="8" fill="white" opacity="0.5"/>
+  <circle cx="345" cy="275" r="8" fill="white" opacity="0.5"/>
+  <!-- 葡萄叶子 -->
+  <path d="M 370 220 Q 350 200 360 190 Q 370 200 370 220" fill="url(#leaf)" filter="url(#shadow)"/>
   
-  <!-- 林字右边 -->
-  <rect x="270" y="220" width="16" height="100" rx="8" fill="white"/>
-  <rect x="250" y="280" width="56" height="16" rx="8" fill="white"/>
+  <!-- 小装饰水果（樱桃） -->
+  <circle cx="180" cy="200" r="20" fill="#FF3838" filter="url(#shadow)"/>
+  <circle cx="200" cy="195" r="20" fill="#FF3838" filter="url(#shadow)"/>
+  <ellipse cx="190" cy="185" rx="8" ry="12" fill="url(#leaf)"/>
   
-  <!-- 鬼字底部 -->
-  <path d="M200 340 Q256 380 312 340" stroke="url(#accent)" stroke-width="20" fill="none" stroke-linecap="round"/>
-  <circle cx="230" cy="370" r="12" fill="url(#accent)"/>
-  <circle cx="282" cy="370" r="12" fill="url(#accent)"/>
+  <!-- 小装饰水果（草莓） -->
+  <ellipse cx="320" cy="380" rx="22" ry="28" fill="#FF6B9D" filter="url(#shadow)"/>
+  <ellipse cx="315" cy="360" rx="6" ry="8" fill="url(#leaf)"/>
+  <ellipse cx="325" cy="358" rx="5" ry="7" fill="url(#leaf)"/>
+  <circle cx="318" cy="375" r="2" fill="white" opacity="0.6"/>
+  <circle cx="322" cy="385" r="2" fill="white" opacity="0.6"/>
   
-  <!-- 点缀星星 -->
-  <circle cx="380" cy="120" r="8" fill="white" opacity="0.8"/>
-  <circle cx="400" cy="160" r="5" fill="white" opacity="0.6"/>
-  <circle cx="120" cy="400" r="6" fill="white" opacity="0.7"/>
+  <!-- AI 标识（可选的小星星装饰） -->
+  <circle cx="400" cy="150" r="6" fill="white" opacity="0.9" filter="url(#glow)"/>
+  <circle cx="420" cy="140" r="4" fill="white" opacity="0.7"/>
+  <circle cx="110" cy="400" r="5" fill="white" opacity="0.8"/>
 </svg>
 `
 

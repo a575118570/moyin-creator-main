@@ -334,7 +334,8 @@ function shouldHideModel(type: 'image' | 'video', model: string): boolean {
   if (/^ideogram_(edit|reframe|remix|replace_background|upscale|describe)/i.test(model)) return true;
   if (/^(kling-image-recognize|deepseek-ocr)$/i.test(model)) return true;
   if (/qwen-image-edit/i.test(model)) return true;
-  if (/seededit/i.test(model)) return true;
+  // SeedEdit 系列模型：默认保留，让用户在自由面板中手动选择图生图/编辑模型
+  // if (/seededit/i.test(model)) return true;
   if (/(inpainting|img2img|remove-bg|object-removal|vectorize|rembg)/i.test(model)) return true;
 
   return false;

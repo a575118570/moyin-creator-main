@@ -583,6 +583,22 @@ export function SplitScenes({ onBack, onGenerateVideos }: SplitScenesProps) {
     return refs;
   }, []);
 
+  // 为图生图/多模态模型补充角色文字锚点（配合参考图可显著提高一致性）
+  const buildCharacterIdentityHints = useCallback((characterIds: string[]): string => {
+    if (!characterIds || characterIds.length === 0) return '';
+    const { characters } = useCharacterLibraryStore.getState();
+    const parts: string[] = [];
+    for (const id of characterIds) {
+      const c = characters.find((x) => x.id === id);
+      if (!c) continue;
+      const traits = (c.visualTraits || c.description || '').trim();
+      const trimmed = traits.length > 180 ? `${traits.slice(0, 180)}...` : traits;
+      parts.push(trimmed ? `${c.name}: ${trimmed}` : c.name);
+    }
+    if (parts.length === 0) return '';
+    return `CHARACTER IDENTITY (must match reference images): ${parts.join(' | ')}`;
+  }, []);
+
   // Handle quad grid click
   const handleQuadGridClick = useCallback((sceneId: number, type: "start" | "end") => {
     const scene = splitScenes.find(s => s.id === sceneId);
@@ -1545,6 +1561,13 @@ export function SplitScenes({ onBack, onGenerateVideos }: SplitScenesProps) {
       if (fullStylePrompt) {
         enhancedPrompt = `${promptToUse}. Style: ${fullStylePrompt}`;
       }
+      // 追加角色文字锚点（配合参考图提升一致性，尤其是 Gemini/Nano Banana）
+      if (scene.characterIds && scene.characterIds.length > 0) {
+        const identityHints = buildCharacterIdentityHints(scene.characterIds);
+        if (identityHints) {
+          enhancedPrompt = `${enhancedPrompt}. ${identityHints}`;
+        }
+      }
 
       // Collect reference images: scene background > characters > storyboard style
       const referenceImages: string[] = [];
@@ -1792,8 +1815,9 @@ export function SplitScenes({ onBack, onGenerateVideos }: SplitScenesProps) {
       : charCount === 1 
         ? 'EXACTLY ONE person in frame, single character only, do NOT duplicate the character.'
         : `EXACTLY ${charCount} distinct people in frame, no more no less, each person appears only ONCE.`;
+    const identityHint = buildCharacterIdentityHints(scene.characterIds || []);
     
-    const prompt = `${cameraPart}, ${vertical}${charCountPhrase} ${base}. ${anchor}.${style}`.replace(/\s+/g, ' ').trim();
+    const prompt = `${cameraPart}, ${vertical}${charCountPhrase} ${base}. ${identityHint ? identityHint + '. ' : ''}${anchor}.${style}`.replace(/\s+/g, ' ').trim();
     return prompt;
   };
 

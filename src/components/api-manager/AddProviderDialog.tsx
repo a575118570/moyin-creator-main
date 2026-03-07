@@ -32,10 +32,7 @@ import type { IProvider } from "@/lib/api-key-manager";
 
 /**
  * 平台预设配置
- * 1. 魔因API (memefast) - 全功能中转（推荐）
- * 2. RunningHub - 视角切换/多角度生成
- * 3. 云雾API (yunwu) - AI接口聚合管理服务
- * 4. 自定义 - OpenAI 兼容 API
+ * 为了便于白标/私有化交付：不内置任何默认商业供应商，仅保留「自定义」入口。
  */
 const PLATFORM_PRESETS: Array<{
   platform: string;
@@ -46,54 +43,6 @@ const PLATFORM_PRESETS: Array<{
   models: string[];
   recommended?: boolean;
 }> = [
-  {
-    platform: "memefast",
-    name: "魔因API",
-    baseUrl: "https://memefast.top",
-    description: "543+ 模型中转，支持 GPT/Claude/Gemini/DeepSeek/Veo/Sora 等",
-    services: ["对话", "图片生成", "视频生成", "图片理解"],
-    models: [
-      "deepseek-v3.2",
-      "glm-4.7",
-      "gemini-3-pro-preview",
-      "gemini-3-pro-image-preview",
-      "gpt-image-1.5",
-      "doubao-seedance-1-5-pro-251215",
-      "veo3.1",
-      "sora-2-all",
-      "wan2.6-i2v",
-      "grok-video-3-10s",
-      "claude-haiku-4-5-20251001",
-    ],
-    recommended: true,
-  },
-  {
-    platform: "runninghub",
-    name: "RunningHub",
-    baseUrl: "https://www.runninghub.cn/openapi/v2",
-    description: "Qwen 视角切换 / 多角度生成",
-    services: ["视角切换", "图生图"],
-    models: ["2009613632530812930"],
-  },
-  {
-    platform: "yunwu",
-    name: "云雾API",
-    baseUrl: "https://yunwu.apifox.cn",
-    description: "AI接口聚合管理服务，支持 GPT/Claude/Gemini/图片/视频，无需科学上网",
-    services: ["对话", "图片生成", "视频生成", "图片理解"],
-    models: [
-      "gpt-4o",
-      "gpt-4o-mini",
-      "gpt-4-turbo",
-      "claude-3-5-sonnet-20241022",
-      "claude-3-opus-20240229",
-      "gemini-pro",
-      "gemini-2.5-flash",
-      "dall-e-3",
-      "flux-1-dev",
-      "flux-1-schnell",
-    ],
-  },
   {
     platform: "custom",
     name: "自定义",
@@ -163,10 +112,6 @@ export function AddProviderDialog({
       toast.error("自定义平台需要输入 Base URL");
       return;
     }
-    if (!apiKey.trim()) {
-      toast.error("请输入 API Key");
-      return;
-    }
 
     // 保存该平台的所有预设模型，确保 provider.model 不为空
     const presetModels = selectedPreset?.models || [];
@@ -183,14 +128,13 @@ export function AddProviderDialog({
     });
 
     onOpenChange(false);
-    toast.success(isMemefastAppend ? `已追加 Key 到 ${name}` : `已添加 ${name}`);
+    toast.success(apiKey.trim() ? `已添加 ${name}` : `已添加 ${name}（未填写 Key）`);
   };
 
-  // Filter out already existing platforms (except custom and memefast which allow repeat add)
+  // Filter out already existing platforms (custom can be added multiple times)
   const availablePlatforms = PLATFORM_PRESETS.filter(
-    (p) => p.platform === "custom" || p.platform === "memefast" || !existingPlatforms.includes(p.platform)
+    (p) => p.platform === "custom" || !existingPlatforms.includes(p.platform)
   );
-  const isMemefastAppend = platform === "memefast" && existingPlatforms.includes("memefast");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -254,11 +198,11 @@ export function AddProviderDialog({
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="输入 API Key"
+              placeholder="输入 API Key（可选）"
               className="font-mono"
             />
             <p className="text-xs text-muted-foreground">
-              支持多个 Key，用逗号分隔
+              支持多个 Key，用逗号分隔；也可以先不填，后续在编辑中补充
             </p>
           </div>
 
@@ -277,7 +221,7 @@ export function AddProviderDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button onClick={handleSubmit}>{isMemefastAppend ? "追加 Key" : "添加"}</Button>
+          <Button onClick={handleSubmit}>添加</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

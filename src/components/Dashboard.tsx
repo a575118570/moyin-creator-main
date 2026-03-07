@@ -11,6 +11,8 @@
 import { useState, useCallback } from "react";
 import { useProjectStore } from "@/stores/project-store";
 import { useMediaPanelStore } from "@/stores/media-panel-store";
+import { useLicenseStore } from "@/stores/license-store";
+import { formatRemaining, useTrialStore } from "@/stores/trial-store";
 import { switchProject } from "@/lib/project-switcher";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,10 +47,14 @@ import {
 import { cn, generateUUID } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Project } from "@/stores/project-store";
+import { generateSceneImage } from "@/lib/ai/image-generator";
+import { saveImageToLocal } from "@/lib/image-storage";
 
 export function Dashboard() {
-  const { projects, createProject, deleteProject, renameProject } = useProjectStore();
+  const { projects, createProject, deleteProject, renameProject, setProjectThumbnail } = useProjectStore();
   const { setActiveTab } = useMediaPanelStore();
+  const licenseValid = useLicenseStore((s) => s.status.valid);
+  const trialStatus = useTrialStore((s) => s.getStatus)();
   
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
@@ -72,12 +78,31 @@ export function Dashboard() {
   // ==================== Create / Open ====================
 
   const handleCreateProject = async () => {
-    if (newProjectName.trim()) {
-      const project = createProject(newProjectName.trim());
-      setNewProjectName("");
-      setShowNewProject(false);
-      await switchProject(project.id);
-      setActiveTab("script");
+    const name = newProjectName.trim();
+    if (!name) return;
+
+    const project = createProject(name);
+    setNewProjectName("");
+    setShowNewProject(false);
+    await switchProject(project.id);
+    setActiveTab("script");
+
+    // 异步生成封面图（不阻塞项目创建）
+    try {
+      const prompt = `为一个名为《${name}》的动漫短剧项目生成一张 16:9 比例的精美封面插画，构图居中，画面完整，无裁切，适合作为项目封面。`;
+      const { imageUrl } = await generateSceneImage({
+        prompt,
+        aspectRatio: "16:9",
+        resolution: "1K",
+      });
+
+      if (imageUrl) {
+        const localPath = await saveImageToLocal(imageUrl, "projects", `project_${project.id}_cover.png`);
+        setProjectThumbnail(project.id, localPath);
+      }
+    } catch (error) {
+      console.warn("[Dashboard] 自动生成项目封面失败:", error);
+      toast.error("自动生成封面失败，可稍后在场景/角色中手动生成素材。");
     }
   };
 
@@ -276,46 +301,54 @@ export function Dashboard() {
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
       {/* Header */}
-      <div className="h-16 border-b border-border bg-panel px-8 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-primary text-primary-foreground flex items-center justify-center">
-            <Aperture className="w-6 h-6" />
+      <div className="h-14 md:h-16 border-b border-border bg-panel px-2 md:px-8 flex items-center justify-between shrink-0 gap-2">
+        <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
+          <div className="w-8 h-8 md:w-10 md:h-10 bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+            <Aperture className="w-4 h-4 md:w-6 md:h-6" />
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-foreground tracking-wide">魔因漫创</h1>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Moyin Creator Studio</p>
+          <div className="min-w-0">
+            <h1 className="text-sm md:text-lg font-bold text-foreground tracking-wide truncate">漫果AI</h1>
+            <p className="text-[9px] md:text-[10px] text-muted-foreground uppercase tracking-widest hidden sm:block">Manguo AI Studio</p>
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 md:gap-2 shrink-0">
+          {!licenseValid && trialStatus.active && (
+            <div className="px-1.5 md:px-2 py-0.5 md:py-1 rounded text-[9px] md:text-[10px] font-mono text-amber-300 bg-amber-500/10 border border-amber-500/20 mr-1 md:mr-2 whitespace-nowrap">
+              <span className="hidden sm:inline">试用剩余 </span>
+              {formatRemaining(trialStatus.remainingMs)}
+            </div>
+          )}
           {projects.length > 0 && (
             <Button
               variant={selectionMode ? "secondary" : "outline"}
               size="sm"
               onClick={toggleSelectionMode}
+              className="h-8 md:h-9 px-2 md:px-3 text-xs md:text-sm"
             >
-              <CheckSquare className="w-4 h-4 mr-1.5" />
-              {selectionMode ? "退出选择" : "管理"}
+              <CheckSquare className="w-3.5 h-3.5 md:w-4 md:h-4 md:mr-1.5" />
+              <span className="hidden sm:inline">{selectionMode ? "退出选择" : "管理"}</span>
             </Button>
           )}
           <Button
             onClick={() => setShowNewProject(true)}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium h-8 md:h-9 px-2 md:px-4 text-xs md:text-sm"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            新建项目
+            <Plus className="w-3.5 h-3.5 md:w-4 md:h-4 md:mr-2" />
+            <span className="hidden sm:inline">新建项目</span>
+            <span className="sm:hidden">新建</span>
           </Button>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex-1 overflow-y-auto p-3 md:p-8">
         <div className="max-w-5xl mx-auto">
           {/* Section Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl font-bold text-foreground mb-1">我的项目</h2>
-              <p className="text-sm text-muted-foreground">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 md:mb-6 gap-3">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg md:text-xl font-bold text-foreground mb-1">我的项目</h2>
+              <p className="text-xs md:text-sm text-muted-foreground">
                 共 {projects.length} 个项目
                 {selectionMode && selectedIds.size > 0 && (
                   <span className="text-primary ml-2">· 已选 {selectedIds.size} 个</span>
@@ -325,8 +358,8 @@ export function Dashboard() {
 
             {/* Selection toolbar */}
             {selectionMode && (
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={handleSelectAll}>
+              <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
+                <Button variant="outline" size="sm" onClick={handleSelectAll} className="text-xs md:text-sm h-8 md:h-9">
                   {allSelected ? "取消全选" : "全选"}
                 </Button>
                 <Button
@@ -334,9 +367,12 @@ export function Dashboard() {
                   size="sm"
                   disabled={selectedIds.size === 0}
                   onClick={() => setBatchDeleteConfirm(true)}
+                  className="text-xs md:text-sm h-8 md:h-9"
                 >
-                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                  删除选中 ({selectedIds.size})
+                  <Trash2 className="w-3.5 h-3.5 md:mr-1.5" />
+                  <span className="hidden sm:inline">删除选中</span>
+                  <span className="sm:hidden">删除</span>
+                  <span className="ml-1">({selectedIds.size})</span>
                 </Button>
               </div>
             )}
@@ -344,17 +380,17 @@ export function Dashboard() {
 
           {/* New Project Input */}
           {showNewProject && (
-            <div className="mb-6 p-4 bg-muted/50 border border-border rounded-lg">
-              <div className="flex items-center gap-3">
+            <div className="mb-4 md:mb-6 p-3 md:p-4 bg-muted/50 border border-border rounded-lg">
+              <div className="flex items-center gap-2 md:gap-3">
                 <Input
                   placeholder="输入项目名称..."
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleCreateProject()}
-                  className="flex-1"
+                  className="flex-1 text-sm md:text-base"
                   autoFocus
                 />
-                <Button onClick={handleCreateProject} disabled={!newProjectName.trim()}>
+                <Button onClick={handleCreateProject} disabled={!newProjectName.trim()} className="h-9 md:h-10 text-xs md:text-sm">
                   创建
                 </Button>
                 <Button
@@ -364,6 +400,7 @@ export function Dashboard() {
                     setShowNewProject(false);
                     setNewProjectName("");
                   }}
+                  className="h-9 w-9 md:h-10 md:w-10"
                 >
                   <X className="w-4 h-4" />
                 </Button>
@@ -409,8 +446,16 @@ export function Dashboard() {
                   )}
 
                   {/* Project Thumbnail */}
-                  <div className="aspect-video bg-muted flex items-center justify-center">
-                    <Film className="w-12 h-12 text-muted-foreground/30" />
+                  <div className="relative aspect-video bg-muted flex items-center justify-center overflow-hidden">
+                    {project.thumbnail ? (
+                      <img
+                        src={project.thumbnail}
+                        alt={project.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Film className="w-12 h-12 text-muted-foreground/30" />
+                    )}
                     {isDuplicating && (
                       <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />

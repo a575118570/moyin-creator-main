@@ -39,10 +39,10 @@ export function PreviewPanel() {
 
   if (!previewItem) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-muted-foreground bg-neutral-200 dark:bg-neutral-900">
-        <div className="flex flex-col items-center gap-2">
-          <Video className="h-12 w-12 opacity-30" />
-          <p className="text-sm">点击图片或视频预览</p>
+      <div className="w-full flex items-center justify-center text-muted-foreground bg-transparent py-1.5">
+        <div className="flex items-center gap-1">
+          <Video className="h-3 w-3 opacity-20" />
+          <p className="text-[8px] opacity-60">点击图片或视频预览</p>
         </div>
       </div>
     );
@@ -62,7 +62,7 @@ export function PreviewPanel() {
             ref={videoRef}
             src={previewItem.url}
             controls
-            className="max-w-full max-h-full"
+            className="max-w-full max-h-full object-contain"
           >
             Your browser does not support the video tag.
           </video>

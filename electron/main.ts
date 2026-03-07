@@ -1,7 +1,7 @@
 // Copyright (c) 2025 hotflow2024
 // Licensed under AGPL-3.0-or-later. See LICENSE for details.
 // Commercial licensing available. See COMMERCIAL_LICENSE.md.
-import { app, BrowserWindow, ipcMain, protocol, net, dialog, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, protocol, net, dialog, shell, Menu } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import https from 'node:https'
@@ -36,7 +36,7 @@ function createWindow() {
   console.log('[Main] RENDERER_DIST:', RENDERER_DIST)
   
   win = new BrowserWindow({
-    title: '魔因漫创',
+    title: '漫果AI',
     width: 1400,
     height: 900,
     minWidth: 1200,
@@ -1110,7 +1110,207 @@ protocol.registerSchemesAsPrivileged([{
   }
 }])
 
+// 创建中文菜单
+function createMenu() {
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: '文件',
+      submenu: [
+        {
+          label: '新建项目',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => {
+            // 可以通过 IPC 发送消息到渲染进程
+            BrowserWindow.getAllWindows()[0]?.webContents.send('menu-new-project')
+          }
+        },
+        { type: 'separator' },
+        {
+          label: '退出',
+          accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
+          click: () => {
+            app.quit()
+          }
+        }
+      ]
+    },
+    {
+      label: '编辑',
+      submenu: [
+        { 
+          label: '撤销', 
+          accelerator: 'CmdOrCtrl+Z', 
+          role: 'undo'
+        },
+        { 
+          label: '重做', 
+          accelerator: 'Shift+CmdOrCtrl+Z', 
+          role: 'redo'
+        },
+        { type: 'separator' },
+        { 
+          label: '剪切', 
+          accelerator: 'CmdOrCtrl+X', 
+          role: 'cut'
+        },
+        { 
+          label: '复制', 
+          accelerator: 'CmdOrCtrl+C', 
+          role: 'copy'
+        },
+        { 
+          label: '粘贴', 
+          accelerator: 'CmdOrCtrl+V', 
+          role: 'paste'
+        },
+        { 
+          label: '选择性粘贴', 
+          accelerator: 'Shift+CmdOrCtrl+V', 
+          role: 'pasteAndMatchStyle'
+        },
+        { 
+          label: '删除', 
+          accelerator: 'Delete', 
+          role: 'delete'
+        },
+        { type: 'separator' },
+        { 
+          label: '全选', 
+          accelerator: 'CmdOrCtrl+A', 
+          role: 'selectAll'
+        }
+      ]
+    },
+    {
+      label: '视图',
+      submenu: [
+        { 
+          label: '重新加载', 
+          accelerator: 'CmdOrCtrl+R', 
+          role: 'reload'
+        },
+        { 
+          label: '强制重新加载', 
+          accelerator: 'CmdOrCtrl+Shift+R', 
+          role: 'forceReload'
+        },
+        { 
+          label: '切换开发者工具', 
+          accelerator: 'F12', 
+          role: 'toggleDevTools'
+        },
+        { type: 'separator' },
+        { 
+          label: '实际大小', 
+          accelerator: 'CmdOrCtrl+0', 
+          role: 'resetZoom'
+        },
+        { 
+          label: '放大', 
+          accelerator: 'CmdOrCtrl+Plus', 
+          role: 'zoomIn'
+        },
+        { 
+          label: '缩小', 
+          accelerator: 'CmdOrCtrl+-', 
+          role: 'zoomOut'
+        },
+        { type: 'separator' },
+        { 
+          label: '切换全屏', 
+          accelerator: 'F11', 
+          role: 'togglefullscreen'
+        }
+      ]
+    },
+    {
+      label: '窗口',
+      submenu: [
+        { 
+          label: '最小化', 
+          accelerator: 'CmdOrCtrl+M', 
+          role: 'minimize'
+        },
+        { 
+          label: '关闭', 
+          accelerator: 'CmdOrCtrl+W', 
+          role: 'close'
+        },
+        ...(process.platform === 'darwin' ? [
+          { type: 'separator' },
+          { 
+            label: '前置全部窗口', 
+            role: 'front'
+          }
+        ] : [])
+      ]
+    },
+    {
+      label: '帮助',
+      submenu: [
+        {
+          label: '关于漫果AI',
+          click: () => {
+            dialog.showMessageBox(BrowserWindow.getAllWindows()[0]!, {
+              type: 'info',
+              title: '关于漫果AI',
+              message: '漫果AI',
+              detail: 'AI 驱动的动漫/短剧分镜创作工具\n版本 0.1.30'
+            })
+          }
+        }
+      ]
+    }
+  ]
+
+  // macOS 特殊处理
+  if (process.platform === 'darwin') {
+    template.unshift({
+      label: app.getName(),
+      submenu: [
+        { 
+          label: '关于 ' + app.getName(), 
+          role: 'about'
+        },
+        { type: 'separator' },
+        { 
+          label: '服务', 
+          role: 'services', 
+          submenu: []
+        },
+        { type: 'separator' },
+        { 
+          label: '隐藏 ' + app.getName(), 
+          accelerator: 'Command+H', 
+          role: 'hide'
+        },
+        { 
+          label: '隐藏其他', 
+          accelerator: 'Command+Shift+H', 
+          role: 'hideOthers'
+        },
+        { 
+          label: '显示全部', 
+          role: 'unhide'
+        },
+        { type: 'separator' },
+        { 
+          label: '退出', 
+          accelerator: 'Command+Q', 
+          click: () => app.quit()
+        }
+      ]
+    })
+  }
+
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+}
+
 app.whenReady().then(() => {
+  // 创建中文菜单
+  createMenu()
+  
   // Seed demo project on first run (before window creation)
   seedDemoProject()
 

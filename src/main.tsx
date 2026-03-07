@@ -18,3 +18,16 @@ window.ipcRenderer.on('main-process-message', (_event, message) => {
     console.log('[Renderer] Main process message:', message)
 })
 }
+
+// Register Service Worker for PWA (only in web environment)
+if ('serviceWorker' in navigator && !window.ipcRenderer) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((registration) => {
+        console.log('[SW] Service Worker registered:', registration.scope);
+      })
+      .catch((error) => {
+        console.error('[SW] Service Worker registration failed:', error);
+      });
+  });
+}

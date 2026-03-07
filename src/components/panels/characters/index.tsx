@@ -45,7 +45,36 @@ export function CharactersView() {
 
   return (
     <div className="h-full">
-      <ResizablePanelGroup direction="horizontal" className="h-full">
+      {/* ========== 手机端布局（独立，不影响桌面端） ========== */}
+      {/* 手机端：垂直布局，可滚动 - 仅在 < 768px 显示 */}
+      <div className="md:hidden flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-3 p-2">
+          {/* 第一个面板：生成控制台 */}
+          <div className="w-full min-h-0 flex-shrink-0">
+            <GenerationPanel 
+              selectedCharacter={selectedCharacter}
+              onCharacterCreated={(id) => selectCharacter(id)}
+            />
+          </div>
+
+          {/* 第二个面板：角色库 */}
+          <div className="w-full min-h-0 flex-shrink-0">
+            <CharacterGallery
+              onCharacterSelect={handleCharacterSelect}
+              selectedCharacterId={selectedCharacterId}
+            />
+          </div>
+
+          {/* 第三个面板：角色详情 */}
+          <div className="w-full min-h-0 flex-shrink-0">
+            <CharacterDetail character={selectedCharacter} />
+          </div>
+        </div>
+      </div>
+
+      {/* ========== 桌面端布局（保持原样，完全不变） ========== */}
+      {/* 桌面端：水平布局，可调整大小 - 仅在 >= 768px 显示 */}
+      <ResizablePanelGroup direction="horizontal" className="hidden md:flex h-full">
         {/* Left column - Generation Console */}
         <ResizablePanel defaultSize={25} minSize={20} maxSize={35}>
           <GenerationPanel 

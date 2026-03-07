@@ -10,12 +10,15 @@
  */
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useAPIConfigStore, type IProvider, type ImageHostProvider, type AIFeature } from "@/stores/api-config-store";
+import { useAPIConfigStore, type IProvider, type ImageHostProvider } from "@/stores/api-config-store";
 import { useAppSettingsStore } from "@/stores/app-settings-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useCharacterLibraryStore } from "@/stores/character-library-store";
 import { useSceneStore } from "@/stores/scene-store";
 import { useMediaStore } from "@/stores/media-store";
+import { useLicenseStore } from "@/stores/license-store";
+import { normalizeLicenseKey, verifyLicenseKey } from "@/lib/license/license";
+import { formatRemaining, useTrialStore } from "@/stores/trial-store";
 import { getApiKeyCount, parseApiKeys, maskApiKey } from "@/lib/api-key-manager";
 import { AddProviderDialog, EditProviderDialog, FeatureBindingPanel } from "@/components/api-manager";
 import { AddImageHostDialog } from "@/components/image-host-manager/AddImageHostDialog";
@@ -99,8 +102,6 @@ export function SettingsPanel() {
     resetAdvancedOptions,
     isImageHostConfigured,
     syncProviderModels,
-    setFeatureBindings,
-    getFeatureBindings,
   } = useAPIConfigStore();
   const {
     resourceSharing,
@@ -129,6 +130,50 @@ export function SettingsPanel() {
   const [cacheSize, setCacheSize] = useState(0);
   const [isCacheLoading, setIsCacheLoading] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
+
+  // License
+  const { licenseKey, status: licenseStatus, activate: activateLicense, clear: clearLicense, getHint: getLicenseHint } =
+    useLicenseStore();
+  const [licenseDraft, setLicenseDraft] = useState<string>(licenseKey || "");
+  const licenseHint = useMemo(() => getLicenseHint(), [getLicenseHint, licenseStatus.valid]);
+  const trialStatus = useTrialStore((s) => s.getStatus)();
+  const trialText = useMemo(() => {
+    const exp = new Date(trialStatus.expiresAtMs).toLocaleString();
+    if (trialStatus.active) return `3 天试用中 · 剩余 ${formatRemaining(trialStatus.remainingMs)} · 到期时间：${exp}`;
+    return `试用已到期 · 到期时间：${exp} · ${trialStatus.reason}`;
+  }, [trialStatus.active, trialStatus.expiresAtMs, trialStatus.remainingMs, trialStatus.reason]);
+
+  useEffect(() => {
+    // 当外部激活/清除导致 licenseKey 变化时，保持输入框同步
+    setLicenseDraft(licenseKey || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [licenseKey]);
+
+  const handleLicenseCheck = () => {
+    const s = verifyLicenseKey(normalizeLicenseKey(licenseDraft));
+    if (s.valid) toast.success("密钥有效");
+    else toast.error(s.reason || "密钥无效");
+  };
+
+  const handleLicenseActivate = () => {
+    const normalized = normalizeLicenseKey(licenseDraft);
+    const s = activateLicense(normalized);
+    if (s.valid) toast.success("激活成功");
+    else toast.error(s.reason || "激活失败");
+  };
+
+  const handleLicensePasteAndActivate = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setLicenseDraft(text);
+      const normalized = normalizeLicenseKey(text);
+      const s = activateLicense(normalized);
+      if (s.valid) toast.success("激活成功");
+      else toast.error(s.reason || "激活失败");
+    } catch {
+      toast.error("读取剪贴板失败，请手动粘贴");
+    }
+  };
 
   // Toggle provider expansion
   const toggleExpanded = (id: string) => {
@@ -480,7 +525,7 @@ export function SettingsPanel() {
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
       {/* Header */}
-      <div className="h-16 border-b border-border bg-panel px-6 flex items-center justify-between shrink-0">
+      <div className="h-12 md:h-16 border-b border-border bg-panel px-3 md:px-6 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
           <h2 className="text-lg font-bold text-foreground flex items-center gap-3">
             <Settings className="w-5 h-5 text-primary" />
@@ -501,86 +546,74 @@ export function SettingsPanel() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-        <div className="border-b border-border px-6">
-          <TabsList className="h-12 bg-transparent p-0 gap-4">
+        <div className="border-b border-border px-2 md:px-6 overflow-x-auto">
+          <TabsList className="h-10 md:h-12 bg-transparent p-0 gap-2 md:gap-4 min-w-max">
             <TabsTrigger 
               value="api" 
-              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 h-12"
+              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 md:px-4 h-10 md:h-12 text-xs md:text-sm"
             >
-              <Key className="h-4 w-4 mr-2" />
-              API 管理
+              <Key className="h-3.5 w-3.5 md:h-4 md:w-4 md:mr-2" />
+              <span className="hidden sm:inline">API 管理</span>
+              <span className="sm:hidden">API</span>
             </TabsTrigger>
             <TabsTrigger 
               value="advanced" 
-              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 h-12"
+              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 md:px-4 h-10 md:h-12 text-xs md:text-sm"
             >
-              <Layers className="h-4 w-4 mr-2" />
-              高级选项
+              <Layers className="h-3.5 w-3.5 md:h-4 md:w-4 md:mr-2" />
+              <span className="hidden sm:inline">高级选项</span>
+              <span className="sm:hidden">高级</span>
             </TabsTrigger>
             <TabsTrigger 
               value="imagehost" 
-              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 h-12"
+              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 md:px-4 h-10 md:h-12 text-xs md:text-sm"
             >
-              <Upload className="h-4 w-4 mr-2" />
-              图床配置
+              <Upload className="h-3.5 w-3.5 md:h-4 md:w-4 md:mr-2" />
+              <span className="hidden sm:inline">图床配置</span>
+              <span className="sm:hidden">图床</span>
               {isImageHostConfigured() && (
-                <span className="ml-1 w-2 h-2 bg-green-500 rounded-full" />
+                <span className="ml-1 w-1.5 h-1.5 md:w-2 md:h-2 bg-green-500 rounded-full" />
               )}
             </TabsTrigger>
             <TabsTrigger 
               value="storage" 
-              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4 h-12"
+              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 md:px-4 h-10 md:h-12 text-xs md:text-sm"
             >
-              <HardDrive className="h-4 w-4 mr-2" />
-              存储
+              <HardDrive className="h-3.5 w-3.5 md:h-4 md:w-4 md:mr-2" />
+              <span className="hidden sm:inline">存储</span>
+              <span className="sm:hidden">存储</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="license"
+              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-2 md:px-4 h-10 md:h-12 text-xs md:text-sm"
+            >
+              <Shield className="h-3.5 w-3.5 md:h-4 md:w-4 md:mr-2" />
+              <span className="hidden sm:inline">开门密钥</span>
+              <span className="sm:hidden">密钥</span>
+              {licenseStatus.valid && <span className="ml-1 w-1.5 h-1.5 md:w-2 md:h-2 bg-green-500 rounded-full" />}
             </TabsTrigger>
           </TabsList>
         </div>
 
         {/* API Management Tab */}
         <TabsContent value="api" className="flex-1 overflow-hidden mt-0">
-          <ScrollArea className="h-full">
-            <div className="p-8 max-w-5xl mx-auto space-y-8">
+          <div className="h-full overflow-y-auto overflow-x-hidden">
+            <div className="p-2 md:p-8 max-w-5xl mx-auto space-y-3 md:space-y-8">
           {/* Security Notice */}
-          <div className="flex items-start gap-3 p-4 bg-muted/50 border border-border rounded-lg">
-            <Shield className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-            <div>
-              <h3 className="font-medium text-foreground text-sm">安全说明</h3>
-              <p className="text-xs text-muted-foreground mt-1">
+          <div className="flex items-start gap-2 md:gap-3 p-2 md:p-4 bg-muted/50 border border-border rounded-lg">
+            <Shield className="h-4 w-4 md:h-5 md:w-5 text-primary mt-0.5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-foreground text-xs md:text-sm">安全说明</h3>
+              <p className="text-[10px] md:text-xs text-muted-foreground mt-1">
                 所有 API Key 仅存储在您的浏览器本地存储中，不会上传到任何服务器。支持多 Key 轮换，失败时自动切换。
               </p>
             </div>
           </div>
 
-          {/* MemeFast 购买引导 */}
-          <a
-            href="https://memefast.top"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 p-4 bg-gradient-to-r from-orange-500/5 to-primary/5 border border-orange-500/20 rounded-lg hover:border-orange-500/40 transition-colors group"
-          >
-            <div className="p-2 rounded-lg bg-orange-500/10 text-orange-500 shrink-0">
-              <Zap className="h-5 w-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-foreground text-sm flex items-center gap-2">
-                魔因API
-                <span className="text-[10px] px-1.5 py-0.5 bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded">
-                  推荐
-                </span>
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                543+ AI 模型一站式接入，支持 GPT / Claude / Gemini / DeepSeek / Sora 等
-              </p>
-            </div>
-            <span className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-primary group-hover:underline">
-              获取 API Key
-              <ExternalLink className="h-3.5 w-3.5" />
-            </span>
-          </a>
-
           {/* Feature Binding */}
+          <div className="overflow-hidden">
           <FeatureBindingPanel />
+          </div>
 
           {/* Provider List */}
           <div className="space-y-4">
@@ -595,18 +628,9 @@ export function SettingsPanel() {
                 <h3 className="text-lg font-medium text-foreground mb-2">
                   尚未配置任何供应商
                 </h3>
-                <p className="text-sm text-muted-foreground mb-2">
-                  推荐使用魔因API，支持 543+ 模型一站式接入
+                <p className="text-sm text-muted-foreground mb-4">
+                  点击下方按钮添加你的 API 供应商（支持自定义 OpenAI 兼容接口）
                 </p>
-                <a
-                  href="https://memefast.top"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline mb-4"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  前往魔因API获取 Key
-                </a>
                 <Button onClick={() => setAddDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-1" />
                   添加供应商
@@ -654,11 +678,6 @@ export function SettingsPanel() {
                               <div className="text-left">
                                 <h4 className="font-medium text-foreground flex items-center gap-2">
                                   {provider.name}
-                                  {provider.platform === 'memefast' && (
-                                    <span className="text-[10px] px-1.5 py-0.5 bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded font-normal">
-                                      推荐
-                                    </span>
-                                  )}
                                   {configured && (
                                     <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded font-normal">
                                       已配置
@@ -792,21 +811,6 @@ export function SettingsPanel() {
                           </div>
                         </CollapsibleTrigger>
 
-                        {/* MemeFast 购买引导 */}
-                        {provider.platform === 'memefast' && !configured && (
-                          <div className="px-4 pb-2">
-                            <a
-                              href="https://memefast.top"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              前往魔因API获取 Key →
-                            </a>
-                          </div>
-                        )}
-
                         {/* Expandable Content */}
                         <CollapsibleContent>
                           <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-3">
@@ -864,16 +868,16 @@ export function SettingsPanel() {
           </div>
 
           {/* Global Settings */}
-          <div className="p-6 border border-border rounded-xl bg-card space-y-6">
-            <h3 className="font-bold text-foreground flex items-center gap-2">
-              <Settings className="h-4 w-4" />
+          <div className="p-3 md:p-6 border border-border rounded-xl bg-card space-y-4 md:space-y-6">
+            <h3 className="font-bold text-foreground flex items-center gap-2 text-sm md:text-base">
+              <Settings className="h-3.5 w-3.5 md:h-4 md:w-4" />
               全局设置
             </h3>
 
             {/* Concurrency */}
-            <div className="space-y-3">
+            <div className="space-y-2 md:space-y-3">
               <Label className="text-xs text-muted-foreground">并发生成数</Label>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 md:gap-3">
                 <Input
                   type="number"
                   min={1}
@@ -882,9 +886,9 @@ export function SettingsPanel() {
                     const val = parseInt(e.target.value);
                     if (val >= 1) setConcurrency(val);
                   }}
-                  className="w-24"
+                  className="w-20 md:w-24 text-sm md:text-base"
                 />
-                <span className="text-xs text-muted-foreground">
+                <span className="text-[10px] md:text-xs text-muted-foreground">
                   同时生成的任务数量（多 Key 时可设置更高，建议不超过 Key 数量）
                 </span>
               </div>
@@ -892,18 +896,18 @@ export function SettingsPanel() {
           </div>
 
               {/* About */}
-              <div className="text-center py-8 text-muted-foreground border-t border-border">
-                <p className="text-sm font-medium">魔因漫创 Moyin Creator</p>
-                <p className="text-xs mt-1">v0.1.7 · AI 驱动的动漫视频创作工具</p>
+          <div className="text-center py-4 md:py-8 text-muted-foreground border-t border-border">
+            <p className="text-xs md:text-sm font-medium">Moyin Creator</p>
+            <p className="text-[10px] md:text-xs mt-1">v0.1.30 · AI 驱动的动漫视频创作工具</p>
               </div>
             </div>
-          </ScrollArea>
+          </div>
         </TabsContent>
 
         {/* Advanced Options Tab */}
         <TabsContent value="advanced" className="flex-1 overflow-hidden mt-0">
-          <ScrollArea className="h-full">
-            <div className="p-8 max-w-3xl mx-auto space-y-8">
+          <div className="h-full overflow-y-auto">
+            <div className="p-3 md:p-8 max-w-3xl mx-auto space-y-4 md:space-y-8">
               {/* Header */}
               <div className="flex items-start justify-between">
                 <div>
@@ -929,20 +933,20 @@ export function SettingsPanel() {
               </div>
 
               {/* Options List */}
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 {/* Visual Continuity */}
-                <div className="p-4 border border-border rounded-xl bg-card">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10 text-primary mt-0.5">
-                        <Link2 className="h-5 w-5" />
+                <div className="p-3 md:p-4 border border-border rounded-xl bg-card">
+                  <div className="flex items-start justify-between gap-2 md:gap-4">
+                    <div className="flex items-start gap-2 md:gap-3 flex-1 min-w-0">
+                      <div className="p-1.5 md:p-2 rounded-lg bg-primary/10 text-primary mt-0.5 shrink-0">
+                        <Link2 className="h-4 w-4 md:h-5 md:w-5" />
                       </div>
-                      <div>
-                        <h4 className="font-medium text-foreground">视觉连续性</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-foreground text-sm md:text-base">视觉连续性</h4>
+                        <p className="text-xs md:text-sm text-muted-foreground mt-1">
                           自动将上一分镜的尾帧传递给下一分镜作为参考图，保持视觉风格和角色外观的一致性
                         </p>
-                        <p className="text-xs text-muted-foreground/70 mt-1">
+                        <p className="text-[10px] md:text-xs text-muted-foreground/70 mt-1">
                           推荐开启 · 适合连续叙事和长视频创作
                         </p>
                       </div>
@@ -950,23 +954,24 @@ export function SettingsPanel() {
                     <Switch
                       checked={advancedOptions.enableVisualContinuity}
                       onCheckedChange={(checked) => setAdvancedOption('enableVisualContinuity', checked)}
+                      className="shrink-0"
                     />
                   </div>
                 </div>
 
                 {/* Resume Generation */}
-                <div className="p-4 border border-border rounded-xl bg-card">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10 text-primary mt-0.5">
-                        <Play className="h-5 w-5" />
+                <div className="p-3 md:p-4 border border-border rounded-xl bg-card">
+                  <div className="flex items-start justify-between gap-2 md:gap-4">
+                    <div className="flex items-start gap-2 md:gap-3 flex-1 min-w-0">
+                      <div className="p-1.5 md:p-2 rounded-lg bg-primary/10 text-primary mt-0.5 shrink-0">
+                        <Play className="h-4 w-4 md:h-5 md:w-5" />
                       </div>
-                      <div>
-                        <h4 className="font-medium text-foreground">断点续传</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-foreground text-sm md:text-base">断点续传</h4>
+                        <p className="text-xs md:text-sm text-muted-foreground mt-1">
                           批量生成中断后可从上次位置继续，不需要重新开始
                         </p>
-                        <p className="text-xs text-muted-foreground/70 mt-1">
+                        <p className="text-[10px] md:text-xs text-muted-foreground/70 mt-1">
                           推荐开启 · 防止网络中断或 API 超时导致进度丢失
                         </p>
                       </div>
@@ -974,23 +979,24 @@ export function SettingsPanel() {
                     <Switch
                       checked={advancedOptions.enableResumeGeneration}
                       onCheckedChange={(checked) => setAdvancedOption('enableResumeGeneration', checked)}
+                      className="shrink-0"
                     />
                   </div>
                 </div>
 
                 {/* Content Moderation */}
-                <div className="p-4 border border-border rounded-xl bg-card">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10 text-primary mt-0.5">
-                        <ShieldAlert className="h-5 w-5" />
+                <div className="p-3 md:p-4 border border-border rounded-xl bg-card">
+                  <div className="flex items-start justify-between gap-2 md:gap-4">
+                    <div className="flex items-start gap-2 md:gap-3 flex-1 min-w-0">
+                      <div className="p-1.5 md:p-2 rounded-lg bg-primary/10 text-primary mt-0.5 shrink-0">
+                        <ShieldAlert className="h-4 w-4 md:h-5 md:w-5" />
                       </div>
-                      <div>
-                        <h4 className="font-medium text-foreground">内容审核容错</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-foreground text-sm md:text-base">内容审核容错</h4>
+                        <p className="text-xs md:text-sm text-muted-foreground mt-1">
                           遇到敏感内容时自动跳过该分镜，继续生成其他分镜
                         </p>
-                        <p className="text-xs text-muted-foreground/70 mt-1">
+                        <p className="text-[10px] md:text-xs text-muted-foreground/70 mt-1">
                           推荐开启 · 避免单个分镜失败导致整个流程中断
                         </p>
                       </div>
@@ -998,23 +1004,24 @@ export function SettingsPanel() {
                     <Switch
                       checked={advancedOptions.enableContentModeration}
                       onCheckedChange={(checked) => setAdvancedOption('enableContentModeration', checked)}
+                      className="shrink-0"
                     />
                   </div>
                 </div>
 
                 {/* Auto Model Switch */}
-                <div className="p-4 border border-border rounded-xl bg-card">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-muted text-muted-foreground mt-0.5">
-                        <Zap className="h-5 w-5" />
+                <div className="p-3 md:p-4 border border-border rounded-xl bg-card">
+                  <div className="flex items-start justify-between gap-2 md:gap-4">
+                    <div className="flex items-start gap-2 md:gap-3 flex-1 min-w-0">
+                      <div className="p-1.5 md:p-2 rounded-lg bg-muted text-muted-foreground mt-0.5 shrink-0">
+                        <Zap className="h-4 w-4 md:h-5 md:w-5" />
                       </div>
-                      <div>
-                        <h4 className="font-medium text-foreground">多模型自动切换</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-foreground text-sm md:text-base">多模型自动切换</h4>
+                        <p className="text-xs md:text-sm text-muted-foreground mt-1">
                           首分镜使用文生视频 (t2v)，后续分镜使用图生视频 (i2v)
                         </p>
-                        <p className="text-xs text-muted-foreground/70 mt-1">
+                        <p className="text-[10px] md:text-xs text-muted-foreground/70 mt-1">
                           默认关闭 · 需要配置多个模型才能使用
                         </p>
                       </div>
@@ -1022,28 +1029,29 @@ export function SettingsPanel() {
                     <Switch
                       checked={advancedOptions.enableAutoModelSwitch}
                       onCheckedChange={(checked) => setAdvancedOption('enableAutoModelSwitch', checked)}
+                      className="shrink-0"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Info Notice */}
-              <div className="flex items-start gap-3 p-4 bg-muted/50 border border-border rounded-lg">
-                <Info className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm text-muted-foreground">
+              <div className="flex items-start gap-2 md:gap-3 p-3 md:p-4 bg-muted/50 border border-border rounded-lg">
+                <Info className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs md:text-sm text-muted-foreground">
                     这些选项会影响 AI 导演板块的视频生成行为。如果你不确定某个选项的作用，建议保持默认设置。
                   </p>
                 </div>
               </div>
 
               {/* About */}
-              <div className="text-center py-8 text-muted-foreground border-t border-border">
-                <p className="text-sm font-medium">魔因漫创 Moyin Creator</p>
-                <p className="text-xs mt-1">v0.1.7 · AI 驱动的动漫视频创作工具</p>
+              <div className="text-center py-4 md:py-8 text-muted-foreground border-t border-border">
+                <p className="text-xs md:text-sm font-medium">Moyin Creator</p>
+                <p className="text-[10px] md:text-xs mt-1">v0.1.30 · AI 驱动的动漫视频创作工具</p>
               </div>
             </div>
-          </ScrollArea>
+          </div>
         </TabsContent>
 
         {/* Image Host Config Tab */}
@@ -1182,8 +1190,8 @@ export function SettingsPanel() {
 
               {/* About */}
               <div className="text-center py-8 text-muted-foreground border-t border-border">
-                <p className="text-sm font-medium">魔因漫创 Moyin Creator</p>
-                <p className="text-xs mt-1">v0.1.7 · AI 驱动的动漫视频创作工具</p>
+                <p className="text-sm font-medium">Moyin Creator</p>
+                <p className="text-xs mt-1">v0.1.30 · AI 驱动的动漫视频创作工具</p>
               </div>
             </div>
           </ScrollArea>
@@ -1390,8 +1398,99 @@ export function SettingsPanel() {
 
               {/* About */}
               <div className="text-center py-8 text-muted-foreground border-t border-border">
-                <p className="text-sm font-medium">魔因漫创 Moyin Creator</p>
-                <p className="text-xs mt-1">v0.1.7 · AI 驱动的动漫视频创作工具</p>
+                <p className="text-sm font-medium">Moyin Creator</p>
+                <p className="text-xs mt-1">v0.1.30 · AI 驱动的动漫视频创作工具</p>
+              </div>
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        {/* License Tab */}
+        <TabsContent value="license" className="flex-1 overflow-hidden mt-0">
+          <ScrollArea className="h-full">
+            <div className="p-8 max-w-3xl mx-auto space-y-8">
+              <div>
+                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  开门密钥
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  你可以在这里清除当前授权并重新输入另一条密钥进行测试（无需重启）。
+                </p>
+              </div>
+
+              <div className="p-6 border border-border rounded-xl bg-card space-y-4">
+                <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                  {trialText}
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">当前状态</p>
+                    {licenseStatus.valid ? (
+                      <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                        已激活：{licenseHint || "有效授权"}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        未激活：{licenseStatus.reason || "需要开门密钥"}
+                      </p>
+                    )}
+                  </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm">
+                        清除并重新测试
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>确认清除开门密钥？</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          清除后会立刻回到开门界面，需要重新输入密钥才能继续使用软件。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => {
+                            clearLicense();
+                            setLicenseDraft("");
+                            toast.success("已清除开门密钥");
+                          }}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          立即清除
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">输入/粘贴开门密钥</Label>
+                  <Input
+                    value={licenseDraft}
+                    onChange={(e) => setLicenseDraft(e.target.value)}
+                    placeholder="MG1.********.********"
+                    showClearIcon
+                    onClear={() => setLicenseDraft("")}
+                    className="font-mono text-xs"
+                  />
+                  <div className="flex flex-wrap gap-2 justify-end">
+                    <Button variant="outline" size="sm" onClick={handleLicenseCheck}>
+                      校验
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleLicensePasteAndActivate}>
+                      从剪贴板激活
+                    </Button>
+                    <Button size="sm" onClick={handleLicenseActivate}>
+                      激活
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    提示：授权信息保存在本机（localStorage：<span className="font-mono">manguo-license</span>），清空浏览器/数据目录后需要重新激活。
+                  </p>
+                </div>
               </div>
             </div>
           </ScrollArea>
@@ -1403,42 +1502,11 @@ export function SettingsPanel() {
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
         onSubmit={(providerData) => {
-          // 魔因API：已存在时合并 Key，不重复创建
-          const existingMemefast = providerData.platform === 'memefast'
-            ? providers.find((p) => p.platform === 'memefast')
-            : null;
-          let provider: IProvider;
-          if (existingMemefast) {
-            const oldKeys = parseApiKeys(existingMemefast.apiKey);
-            const newKeys = parseApiKeys(providerData.apiKey);
-            const merged = Array.from(new Set([...oldKeys, ...newKeys]));
-            updateProvider({ ...existingMemefast, apiKey: merged.join(',') });
-            provider = existingMemefast;
-          } else {
-            provider = addProvider(providerData);
-          }
-          // 如果添加的是 memefast 供应商，自动设置默认服务映射（仅在对应服务尚未配置时）
-          if (providerData.platform === 'memefast') {
-            // 使用 provider.id（而非 platform 字符串）避免多供应商时的歧义解析
-            const pid = provider.id;
-            const MEMEFAST_DEFAULT_BINDINGS: Record<string, string> = {
-              script_analysis: `${pid}:deepseek-v3`,
-              character_generation: `${pid}:gemini-3-pro-image-preview`,
-              video_generation: `${pid}:doubao-seedance-1-5-pro-251215`,
-              image_understanding: `${pid}:gemini-2.5-flash`,
-            };
-            for (const [feature, binding] of Object.entries(MEMEFAST_DEFAULT_BINDINGS)) {
-              const current = getFeatureBindings(feature as AIFeature);
-              if (!current || current.length === 0) {
-                setFeatureBindings(feature as AIFeature, [binding]);
-              }
-            }
-          }
+          const provider: IProvider = addProvider(providerData);
           // 添加后自动同步模型列表和端点元数据
-          const finalProviderId = existingMemefast ? existingMemefast.id : provider.id;
           if (parseApiKeys(providerData.apiKey).length > 0) {
-            setSyncingProvider(finalProviderId);
-            syncProviderModels(finalProviderId).then(result => {
+            setSyncingProvider(provider.id);
+            syncProviderModels(provider.id).then(result => {
               setSyncingProvider(null);
               if (result.success) {
                 toast.success(`已自动同步 ${result.count} 个模型`);

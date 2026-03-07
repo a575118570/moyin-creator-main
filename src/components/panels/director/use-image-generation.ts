@@ -94,6 +94,12 @@ export async function callImageGenerationApi(
   if (!imageBaseUrl) {
     throw new Error('请先在设置中配置图片生成服务映射');
   }
+
+  // 预处理参考图：本地路径 → base64，最多保留 4 张，保证都为 API 可识别格式
+  const processedRefs = referenceImages.length > 0
+    ? await processReferenceImages(referenceImages, 4)
+    : [];
+
   // Call image generation API with smart routing (auto-selects chat/completions or images/generations)
   const apiResult = await submitGridImageRequest({
     model,
@@ -101,7 +107,7 @@ export async function callImageGenerationApi(
     apiKey: apiKeyToUse,
     baseUrl: imageBaseUrl,
     aspectRatio,
-    referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
+    referenceImages: processedRefs.length > 0 ? processedRefs : undefined,
   });
 
   // Direct URL result

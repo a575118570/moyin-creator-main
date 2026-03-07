@@ -12,12 +12,13 @@ import {
   SparklesIcon,
   PaletteIcon,
   LucideIcon,
+  HelpCircle,
 } from "lucide-react";
 import { create } from "zustand";
 import type { CharacterIdentityAnchors, CharacterNegativePrompt } from "@/types/script";
 
 // Tab-based navigation (simpler flat structure)
-export type Tab = "dashboard" | "script" | "characters" | "scenes" | "freedom" | "director" | "sclass" | "media" | "export" | "settings";
+export type Tab = "dashboard" | "script" | "characters" | "scenes" | "freedom" | "director" | "sclass" | "media" | "export" | "settings" | "help";
 
 export interface NavItem {
   id: Tab;
@@ -70,6 +71,7 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string; stage?: St
   media: { icon: VideoIcon, label: "素材" },
   export: { icon: FilmIcon, label: "导出", stage: "export" },
   settings: { icon: SettingsIcon, label: "设置" },
+  help: { icon: HelpCircle, label: "帮助" },
 };
 
 // Data passed from script panel to director

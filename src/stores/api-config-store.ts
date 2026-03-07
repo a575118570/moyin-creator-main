@@ -262,12 +262,12 @@ export interface APIConfigStatus {
 
 /**
  * 供应商信息映射
- * 1. memefast - 魔因API，全功能 AI 中转（推荐）
+ * 1. memefast - OpenAI 兼容中转（平台标识）
  * 2. runninghub - RunningHub，视角切换/多角度生成
  * 3. yunwu - 云雾API，AI接口聚合管理服务
  */
 const PROVIDER_INFO: Record<ProviderId, { name: string; services: ServiceType[] }> = {
-  memefast: { name: '魔因API', services: ['chat', 'image', 'video', 'vision'] },
+  memefast: { name: 'memefast', services: ['chat', 'image', 'video', 'vision'] },
   runninghub: { name: 'RunningHub', services: ['image', 'vision'] },
   yunwu: { name: '云雾API', services: ['chat', 'image', 'video', 'vision'] },
   openai: { name: 'OpenAI', services: [] },
@@ -293,13 +293,9 @@ const defaultImageHostProviders: ImageHostProvider[] = DEFAULT_IMAGE_HOST_PROVID
   apiKey: '',
 }));
 
-// Pre-fill MemeFast for new users (no API Key, just the provider entry)
-const memefastTemplate = DEFAULT_PROVIDERS.find(p => p.platform === 'memefast');
-
 const initialState: APIConfigState = {
-  providers: memefastTemplate
-    ? [{ id: generateId(), ...memefastTemplate, apiKey: '' }]
-    : [],
+  // 默认不预置任何供应商（由用户/供应商自行添加）
+  providers: [],
   featureBindings: defaultFeatureBindings,
   apiKeys: {},
   concurrency: 1,  // Default to serial execution (single key rate limit)
@@ -375,7 +371,8 @@ export const useAPIConfigStore = create<APIConfigStore>()(
 
         try {
           // 用 Set 收集所有 key 的模型，自动去重
-          const allModelIds = new Set<string>();
+          // 先把当前 provider 已配置的模型放进去，保留手工添加的模型（如未在远端列表中的试验模型）
+          const allModelIds = new Set<string>(Array.isArray(provider.model) ? provider.model : []);
           const isMemefast = provider.platform === 'memefast';
 
           if (isMemefast) {
@@ -509,15 +506,20 @@ export const useAPIConfigStore = create<APIConfigStore>()(
           }
 
           const modelIds = Array.from(allModelIds);
-          if (modelIds.length === 0) {
+          // Safety: SeedEdit/编辑类模型在当前产品路径中不支持（OpenAI 兼容通道易 404/错乱），同步时直接过滤，防止回流到配置里
+          const cleanedModelIds = modelIds.filter((m) => {
+            const s = String(m || '');
+            return !/seededit/i.test(s) && !/doubao-seededit/i.test(s);
+          });
+          if (cleanedModelIds.length === 0) {
             return { success: false, count: 0, error: '未获取到任何模型' };
           }
 
           // Replace provider model list with merged & deduped data
-          get().updateProvider({ ...provider, model: modelIds });
+          get().updateProvider({ ...provider, model: cleanedModelIds });
 
-          console.log(`[APIConfig] Synced ${modelIds.length} models for ${provider.name} (from ${keys.length} keys)`);
-          return { success: true, count: modelIds.length };
+          console.log(`[APIConfig] Synced ${cleanedModelIds.length} models for ${provider.name} (from ${keys.length} keys)`);
+          return { success: true, count: cleanedModelIds.length };
         } catch (error) {
           console.error('[APIConfig] Model sync failed:', error);
           return { success: false, count: 0, error: '网络请求失败，请检查网络' };
@@ -862,10 +864,60 @@ export const useAPIConfigStore = create<APIConfigStore>()(
     }),
     {
       name: 'opencut-api-config',  // localStorage key
-      version: 9,  // v9: convert platform:model bindings to id:model (fix multi-custom-provider bug)
+      version: 11,  // v11: purge seededit models/bindings to avoid OpenAI-compatible 404 confusion
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Partial<APIConfigState> & { imageHostConfig?: LegacyImageHostConfig } | undefined;
         console.log(`[APIConfig] Migrating from version ${version}`);
+
+        // v10 -> v11: purge SeedEdit (img2img/edit) model ids from persisted config to prevent misbinding & 404.
+        // We only keep the OpenAI-compatible T2I models (e.g., doubao-seedream) in this app path.
+        const purgeSeedEdit = <T extends { model?: string[] }>(providers: T[]): T[] => {
+          return (providers || []).map((p) => {
+            const models = Array.isArray(p.model) ? p.model : [];
+            const cleaned = models.filter((m) => {
+              const s = String(m || '');
+              return !/seededit/i.test(s) && !/doubao-seededit/i.test(s);
+            });
+            return cleaned.length === models.length ? p : ({ ...p, model: cleaned } as T);
+          });
+        };
+
+        const purgeSeedEditBindings = (bindings: any): FeatureBindings => {
+          const input = bindings || {};
+          const out: FeatureBindings = {
+            script_analysis: null,
+            character_generation: null,
+            scene_generation: null,
+            video_generation: null,
+            image_understanding: null,
+            chat: null,
+            freedom_image: null,
+            freedom_video: null,
+          };
+
+          for (const k of Object.keys(out) as AIFeature[]) {
+            const v = (input as any)[k];
+            const arr = typeof v === 'string' ? [v] : Array.isArray(v) ? v : [];
+            const cleaned = arr.filter((b: string) => {
+              const idx = String(b).indexOf(':');
+              const model = idx > 0 ? String(b).slice(idx + 1) : String(b);
+              return !/seededit/i.test(model) && !/doubao-seededit/i.test(model);
+            });
+            out[k] = cleaned.length > 0 ? cleaned : null;
+          }
+          return out;
+        };
+
+        const purgeSeedEditMeta = (rec?: Record<string, any>) => {
+          const out: Record<string, any> = {};
+          const input = rec || {};
+          for (const [k, v] of Object.entries(input)) {
+            const key = String(k || '');
+            if (/seededit/i.test(key) || /doubao-seededit/i.test(key)) continue;
+            out[key] = v;
+          }
+          return out;
+        };
         
         // Default feature bindings for migration
         const defaultBindings: FeatureBindings = {
@@ -940,6 +992,8 @@ export const useAPIConfigStore = create<APIConfigStore>()(
           // Create provider entries from old apiKeys
           for (const template of DEFAULT_PROVIDERS) {
             const existingKey = oldApiKeys[template.platform as ProviderId] || '';
+            // 白标/私有化：不自动创建无 Key 的模板
+            if (!existingKey || existingKey.trim().length === 0) continue;
             providers.push({
               id: generateId(),
               ...template,
@@ -1055,6 +1109,45 @@ export const useAPIConfigStore = create<APIConfigStore>()(
           return {
             ...state,
             featureBindings: newBindings,
+          };
+        }
+
+        // v9 -> v10: Remove built-in default provider templates that shipped without keys
+        // Keep any provider that the user actually configured (has apiKey).
+        if (version === 9) {
+          const oldProviders: IProvider[] = state?.providers || [];
+          const cleanedProviders = oldProviders.filter((p: IProvider) => {
+            const hasKey = parseApiKeys(p.apiKey).length > 0;
+            if (hasKey) return true;
+            // Remove known shipped templates (empty key + known baseUrl/platform)
+            const base = (p.baseUrl || '').trim();
+            const plat = (p.platform || '').trim();
+            if (plat === 'memefast' && /memefast\.top/i.test(base)) return false;
+            if (plat === 'yunwu' && /yunwu/i.test(base)) return false;
+            return true;
+          });
+          const removedCount = oldProviders.length - cleanedProviders.length;
+          if (removedCount > 0) {
+            console.log(`[APIConfig] v9->v10: Removed ${removedCount} built-in provider template(s) without keys`);
+          }
+          return {
+            ...state,
+            providers: cleanedProviders,
+          };
+        }
+
+        // v10 -> v11
+        if (version === 10) {
+          const providers = purgeSeedEdit(state?.providers as any || []);
+          const featureBindings = purgeSeedEditBindings(state?.featureBindings);
+          return {
+            ...state,
+            providers,
+            featureBindings,
+            modelEndpointTypes: purgeSeedEditMeta(state?.modelEndpointTypes as any),
+            modelTypes: purgeSeedEditMeta(state?.modelTypes as any),
+            modelTags: purgeSeedEditMeta(state?.modelTags as any),
+            discoveredModelLimits: purgeSeedEditMeta(state?.discoveredModelLimits as any),
           };
         }
         

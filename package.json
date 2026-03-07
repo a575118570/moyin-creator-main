@@ -1,7 +1,7 @@
 {
   "name": "moyin-creator",
-  "productName": "魔因漫创",
-"version": "0.1.7",
+  "productName": "漫果AI",
+  "version": "0.1.30",
   "description": "AI 驱动的动漫/短剧分镜创作工具",
   "author": "MemeCalculate",
   "license": "AGPL-3.0-or-later",
@@ -17,8 +17,13 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build && electron-builder --win",
-    "prebuild": "powershell -Command \"Stop-Process -Name 'moyin-creator' -ErrorAction SilentlyContinue; Stop-Process -Name '魔因漫创' -ErrorAction SilentlyContinue; Stop-Process -Name 'moyin-creator-*-setup' -ErrorAction SilentlyContinue; if (Test-Path release) { Remove-Item -Recurse -Force release -ErrorAction SilentlyContinue }\"",
+    "prebuild": "node scripts/bump-version.mjs && powershell -Command \"Stop-Process -Name 'moyin-creator' -ErrorAction SilentlyContinue; Stop-Process -Name '漫果AI' -ErrorAction SilentlyContinue; Stop-Process -Name 'moyin-creator-*-setup' -ErrorAction SilentlyContinue; if (Test-Path release) { Remove-Item -Recurse -Force release -ErrorAction SilentlyContinue }\"",
     "build:win": "electron-vite build && electron-builder --win",
+    "license:keypair": "node tools/license/keypair.mjs",
+    "license:issue": "node tools/license/issue.mjs",
+    "dev:web": "vite --config vite.web.config.ts",
+    "build:web": "vite build --config vite.web.config.ts",
+    "preview:web": "vite preview --config vite.web.config.ts",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "electron-vite preview"
   },
@@ -47,6 +52,7 @@
     "react-resizable-panels": "^2.1.7",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
+    "tweetnacl": "^1.0.3",
     "zustand": "^5.0.10"
   },
   "devDependencies": {
