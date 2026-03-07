@@ -1,0 +1,38 @@
+{
+  "name": "漫果AI",
+  "short_name": "漫果AI",
+  "description": "AI 驱动的动漫/短剧分镜创作工具",
+  "start_url": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "fullscreen", "minimal-ui"],
+  "background_color": "#121212",
+  "theme_color": "#0091ff",
+  "orientation": "any",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "creative", "design"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "新建项目",
+      "short_name": "新建",
+      "description": "创建新的分镜项目",
+      "url": "/?action=new",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false
+}
