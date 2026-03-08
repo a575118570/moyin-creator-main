@@ -83,20 +83,17 @@ export function getPlatformAlternateKey() {
 }
 
 /**
- * 在开发环境中将火山方舟 API URL 转换为代理路径，解决 CORS 问题
+ * 将火山方舟 API URL 转换为代理路径，解决 CORS 问题
  * @param url 原始 API URL
- * @returns 转换后的 URL（开发环境使用代理，生产环境使用原 URL）
+ * @returns 转换后的 URL（使用代理路径，通过 Cloudflare Worker 或 Vite 代理）
  */
 export function getProxiedApiUrl(url: string): string {
-  // 检测是否为开发环境
-  const isDev = typeof window !== 'undefined' && 
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  
-  // 如果是火山方舟 API 且在开发环境，使用代理
-  if (isDev && (url.includes('ark.cn-beijing.volces.com') || url.includes('ark.volces.com'))) {
+  // 如果是火山方舟 API，使用代理路径
+  if (url.includes('ark.cn-beijing.volces.com') || url.includes('ark.volces.com')) {
     try {
       const urlObj = new URL(url);
       // 将 https://ark.cn-beijing.volces.com/api/v3/models 转换为 /api/volcano/api/v3/models
+      // 在开发环境通过 Vite 代理，在生产环境通过 Cloudflare Worker 代理
       return `/api/volcano${urlObj.pathname}${urlObj.search}`;
     } catch (e) {
       console.warn('[getProxiedApiUrl] Failed to parse URL:', url, e);

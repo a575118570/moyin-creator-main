@@ -466,8 +466,10 @@ export const useAPIConfigStore = create<APIConfigStore>()(
 
             for (let ki = 0; ki < keys.length; ki++) {
               try {
-                // 在开发环境中使用代理 URL 解决 CORS 问题
+                // 在开发环境和生产环境中使用代理 URL 解决 CORS 问题
                 const proxiedUrl = getProxiedApiUrl(modelsUrl);
+                console.log('[APIConfig] Original URL:', modelsUrl);
+                console.log('[APIConfig] Proxied URL:', proxiedUrl);
                 
                 const response = await fetch(proxiedUrl, {
                   headers: { 'Authorization': `Bearer ${keys[ki]}` },
