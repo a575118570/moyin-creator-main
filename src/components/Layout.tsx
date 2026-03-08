@@ -9,6 +9,7 @@ import { Dashboard } from "./Dashboard";
 import { ProjectHeader } from "./ProjectHeader";
 import { useMediaPanelStore } from "@/stores/media-panel-store";
 import { usePreviewStore } from "@/stores/preview-store";
+import { useActiveScriptProject } from "@/stores/script-store";
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -30,6 +31,8 @@ import { HelpPanel } from "@/components/panels/HelpPanel";
 export function Layout() {
   const { activeTab, inProject } = useMediaPanelStore();
   const { previewItem } = usePreviewStore();
+  const scriptProject = useActiveScriptProject();
+  const hasScriptData = scriptProject?.scriptData !== null;
 
   // Dashboard mode - show full-screen dashboard or settings
   if (!inProject) {
@@ -122,10 +125,10 @@ export function Layout() {
                 </div>
               </div>
             )}
-            {/* Properties Panel - as part of scrollable content, not fixed */}
+            {/* Properties Panel - as part of scrollable content, not fixed - smaller height when no script data */}
             {(activeTab === "director" || activeTab === "sclass" || activeTab === "media") && (
               <div className="flex-shrink-0 border-t border-border">
-                <div className="min-h-[250px]">
+                <div className={hasScriptData ? "min-h-[250px]" : "h-auto"}>
                   {renderRightPanel()}
                 </div>
               </div>

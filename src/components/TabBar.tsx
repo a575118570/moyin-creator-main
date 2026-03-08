@@ -152,7 +152,7 @@ export function TabBar() {
       {/* Mobile: Right Sidebar Navigation */}
       <Sheet open={isMobileNavOpen} onOpenChange={setIsMobileNavOpen}>
         <SheetTrigger asChild>
-          <button className="md:hidden fixed top-4 right-4 w-12 h-12 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center z-50">
+          <button className="md:hidden fixed top-16 right-4 w-12 h-12 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center z-50">
             <Menu className="h-6 w-6" />
           </button>
         </SheetTrigger>

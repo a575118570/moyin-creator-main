@@ -388,8 +388,9 @@ article::-webkit-scrollbar {
     display: none !important;
   }
   
-  /* Hide desktop ResizablePanelGroup on mobile */
-  [data-panel-group-direction="horizontal"] {
+  /* Hide desktop ResizablePanelGroup on mobile (both horizontal and vertical) */
+  [data-panel-group-direction="horizontal"],
+  [data-panel-group-direction="vertical"] {
     display: none !important;
   }
   
