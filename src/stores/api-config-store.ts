@@ -20,6 +20,7 @@ import {
   classifyModelByName,
 } from '@/lib/api-key-manager';
 import { injectDiscoveryCache, type DiscoveredModelLimits } from '@/lib/ai/model-registry';
+import { getProxiedApiUrl } from '@/lib/utils';
 
 // Re-export IProvider for convenience
 export type { IProvider } from '@/lib/api-key-manager';
@@ -465,7 +466,10 @@ export const useAPIConfigStore = create<APIConfigStore>()(
 
             for (let ki = 0; ki < keys.length; ki++) {
               try {
-                const response = await fetch(modelsUrl, {
+                // 在开发环境中使用代理 URL 解决 CORS 问题
+                const proxiedUrl = getProxiedApiUrl(modelsUrl);
+                
+                const response = await fetch(proxiedUrl, {
                   headers: { 'Authorization': `Bearer ${keys[ki]}` },
                 });
 
