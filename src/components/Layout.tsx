@@ -37,9 +37,10 @@ export function Layout() {
   // Dashboard mode - show full-screen dashboard or settings
   if (!inProject) {
     return (
-      <div className="h-full flex flex-col md:flex-row bg-background">
+      <div className="h-screen w-screen overflow-hidden flex flex-col md:flex-row bg-background">
         <TabBar />
-        <div className="flex-1 overflow-auto">
+        {/* Dashboard / Settings / Help：由这里统一处理滚动 */}
+        <div className="flex-1 min-h-0 overflow-y-auto md:overflow-auto" data-scrollable>
           {activeTab === "settings" ? <SettingsPanel /> : activeTab === "help" ? <HelpPanel /> : <Dashboard />}
         </div>
       </div>
@@ -51,11 +52,16 @@ export function Layout() {
   const fullScreenTabs = ["export", "settings", "help", "script", "characters", "scenes", "freedom"];
   if (fullScreenTabs.includes(activeTab)) {
     return (
-      <div className="h-full flex flex-col md:flex-row bg-background">
+      <div className="h-screen w-screen overflow-hidden flex flex-col md:flex-row bg-background">
         <TabBar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {activeTab !== "help" && <ProjectHeader />}
-          <div className="flex-1 overflow-auto">
+        <div className="flex-1 min-h-0 flex flex-col md:overflow-hidden">
+          {activeTab !== "help" && (
+            <div className="flex-shrink-0">
+              <ProjectHeader />
+            </div>
+          )}
+          {/* 导出 / 设置 / 脚本 / 角色 / 场景 / 自由：全屏页面的统一滚动容器 */}
+          <div className="flex-1 overflow-y-auto md:overflow-auto min-h-0" data-scrollable>
             {activeTab === "export" && <ExportView />}
             {activeTab === "settings" && <SettingsPanel />}
             {activeTab === "help" && <HelpPanel />}
@@ -101,24 +107,27 @@ export function Layout() {
   };
 
   return (
-    <div className="h-full flex flex-col md:flex-row bg-background">
+    <div className="h-screen w-screen overflow-hidden flex flex-col md:flex-row bg-background">
       {/* Left: TabBar - full height on desktop, hidden on mobile */}
       <TabBar />
 
       {/* Right content area */}
-      <div className="flex-1 flex flex-col overflow-hidden pb-16 md:pb-0">
+      <div className={`flex-1 min-h-0 flex flex-col md:overflow-hidden ${activeTab === "media" ? "pb-8 md:pb-0" : "pb-16 md:pb-0"}`}>
         {/* Top: Project Header with save status */}
-        <ProjectHeader />
+        <div className="flex-shrink-0">
+          <ProjectHeader />
+        </div>
         
         {/* Mobile: Single column layout with preview and properties panels in scrollable content */}
-        <div className="md:hidden flex-1 overflow-auto">
-          <div className="flex flex-col min-h-full bg-panel">
+        <div className="md:hidden flex-1 min-h-0 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }} data-scrollable>
+          <div className="flex flex-col bg-panel min-h-0">
             {/* Left Panel Content */}
-            <div className="flex-shrink-0">
+            <div className="min-h-0 flex-shrink-0">
               {renderLeftPanel()}
             </div>
             {/* Preview Panel - as part of scrollable content, not fixed - only show when there's content */}
-            {(activeTab === "director" || activeTab === "sclass" || activeTab === "media") && previewItem && (
+            {/* For media tab, only show preview if there's actually a preview item */}
+            {(activeTab === "director" || activeTab === "sclass" || (activeTab === "media" && previewItem)) && previewItem && (
               <div className="flex-shrink-0 border-t border-border">
                 <div className="h-[40vh] min-h-[200px] max-h-[400px]">
                   <PreviewPanel />
@@ -126,9 +135,10 @@ export function Layout() {
               </div>
             )}
             {/* Properties Panel - as part of scrollable content, not fixed - smaller height when no script data */}
+            {/* Show properties panel for director, sclass, and media tabs */}
             {(activeTab === "director" || activeTab === "sclass" || activeTab === "media") && (
               <div className="flex-shrink-0 border-t border-border">
-                <div className={hasScriptData ? "min-h-[250px]" : "h-auto"}>
+                <div className={activeTab === "media" ? "min-h-[150px] max-h-[200px]" : (hasScriptData ? "min-h-[200px] max-h-[300px]" : "min-h-[100px] max-h-[200px]")}>
                   {renderRightPanel()}
                 </div>
               </div>

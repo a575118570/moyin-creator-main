@@ -99,12 +99,14 @@ export function EditImageHostDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>编辑图床服务商</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4 py-4">
+        {/* 内容区：在弹窗内部单独滚动，避免移动端超出屏幕 */}
+        <div className="flex-1 overflow-y-auto pr-1 -mr-1">
+          <div className="flex flex-col gap-4 py-4">
           <div className="space-y-2">
             <Label className="text-muted-foreground">平台</Label>
             <Input value={provider?.platform || ""} disabled className="bg-muted" />
@@ -172,6 +174,7 @@ export function EditImageHostDialog({
                 <Input value={responseDeleteUrlField} onChange={(e) => setResponseDeleteUrlField(e.target.value)} placeholder="data.delete_url" />
               </div>
             </div>
+          </div>
           </div>
         </div>
 

@@ -192,8 +192,6 @@
     @apply bg-background text-foreground;
     margin: 0;
     padding: 0;
-    overscroll-behavior-x: none;
-    overscroll-behavior-y: none;
     font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
     /* 响应式字体大小 */
     font-size: clamp(14px, 4vw, 16px);
@@ -201,31 +199,17 @@
     /* Prevent text size adjustment on mobile */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    /* Prevent dragging/moving on mobile */
+    /* Prevent dragging/moving on mobile，仍允许正常滚动 */
     touch-action: pan-y;
     -webkit-user-select: none;
     user-select: none;
-    /* Prevent pull-to-refresh and overscroll */
-    overscroll-behavior: none;
-    -webkit-overflow-scrolling: touch;
   }
   #root {
-    height: 100vh;
-    height: 100dvh; /* Dynamic viewport height for mobile */
+    min-height: 100vh;
     width: 100vw;
     width: 100dvw; /* Dynamic viewport width for mobile */
-    /* Prevent horizontal scroll on mobile */
+    /* 仅禁止横向滚动，纵向交给 body 处理 */
     overflow-x: hidden;
-    overflow-y: auto;
-    /* Prevent address bar from showing */
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    /* Prevent dragging */
-    touch-action: pan-y;
-    -webkit-overflow-scrolling: touch;
   }
   /* Safe area support for mobile devices */
   .safe-area-inset-bottom {
@@ -483,45 +467,35 @@ article::-webkit-scrollbar {
     touch-action: pan-y;
   }
   
-  /* 隐藏地址栏 */
+  /* 简化移动端滚动容器设置，避免多层高度/overflow 抢占滚动 */
   html {
-    height: 100%;
-    height: -webkit-fill-available;
-    overflow: hidden;
-    position: fixed;
-    width: 100%;
+    /* 只禁止横向滚动，允许纵向自然滚动 */
+    overflow-x: hidden;
+    overflow-y: visible;
+    height: auto;
+    min-height: 100vh;
     touch-action: pan-y;
   }
-  
+
   body {
-    height: 100%;
-    height: -webkit-fill-available;
-    height: 100dvh;
-    overflow: hidden;
-    position: fixed;
-    width: 100%;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    overscroll-behavior: none;
-    overscroll-behavior-y: none;
-    overscroll-behavior-x: none;
+    /* 只禁止横向滚动，允许纵向自然滚动 */
+    overflow-x: hidden;
+    overflow-y: visible;
+    height: auto;
+    min-height: 100vh;
+    position: relative;
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
   }
-  
-  /* 确保全屏 */
+
   #root {
-    height: 100vh;
-    height: 100dvh;
-    height: -webkit-fill-available;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    touch-action: pan-y;
+    /* 使用最小高度而不是强制高度，避免锁死视口高度 */
+    min-height: 100vh;
+    width: 100%;
+    overflow-x: hidden;
+    overflow-y: visible;
+    position: relative;
+    height: auto;
   }
   
   /* 防止拖动 */
@@ -572,9 +546,8 @@ article::-webkit-scrollbar {
     height: clamp(40px, 10vw, 64px) !important;
   }
   
-  /* 确保内容区域可滚动 */
-  [class*="overflow-auto"],
-  [class*="overflow-y-auto"] {
+  /* 确保主滚动容器滚动体验更好（只作用于明确标记的滚动容器，避免“锁死”滚动链） */
+  [data-scrollable] {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
   }
@@ -600,17 +573,19 @@ article::-webkit-scrollbar {
     min-height: auto !important;
   }
   
-  /* 设置面板内容区域 - 确保不超出 */
-  [class*="TabsContent"] {
-    max-height: calc(100vh - 120px) !important;
-    overflow: hidden !important;
-  }
-  
-  /* 设置面板内部滚动区域 */
-  [class*="TabsContent"] > div[class*="overflow-y-auto"] {
-    max-height: 100% !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
+  /* 设置面板内容区域 - 确保不超出（仅桌面端） */
+  @media (min-width: 768px) {
+    [class*="TabsContent"] {
+      max-height: calc(100vh - 120px) !important;
+      overflow: hidden !important;
+    }
+    
+    /* 设置面板内部滚动区域 */
+    [class*="TabsContent"] > div[class*="overflow-y-auto"] {
+      max-height: 100% !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+    }
   }
   
   /* 确保功能卡片列表不产生水平滚动 */

@@ -828,7 +828,7 @@ export function DirectorContextPanel() {
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                                      className="h-6 w-6 p-0 opacity-100 md:opacity-0 md:group-hover:opacity-100"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleAddShotToSplitScenes(shot, scene);

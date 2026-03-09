@@ -10,11 +10,11 @@ export function FreedomView() {
   const { activeStudio, setActiveStudio } = useFreedomStore();
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
+    <div className="flex flex-col md:h-full bg-background md:overflow-hidden">
       <Tabs
         value={activeStudio}
         onValueChange={(v) => setActiveStudio(v as any)}
-        className="flex flex-col h-full"
+        className="flex flex-col md:h-full"
       >
         <div className="h-12 border-b flex items-center px-4 shrink-0">
           <TabsList className="h-9">
@@ -29,13 +29,13 @@ export function FreedomView() {
             </TabsTrigger>
           </TabsList>
         </div>
-        <TabsContent value="image" className="flex-1 m-0 overflow-hidden">
+        <TabsContent value="image" className="flex-1 m-0 md:overflow-hidden">
           <ImageStudio />
         </TabsContent>
-        <TabsContent value="video" className="flex-1 m-0 overflow-hidden">
+        <TabsContent value="video" className="flex-1 m-0 md:overflow-hidden">
           <VideoStudio />
         </TabsContent>
-        <TabsContent value="cinema" className="flex-1 m-0 overflow-hidden">
+        <TabsContent value="cinema" className="flex-1 m-0 md:overflow-hidden">
           <CinemaStudio />
         </TabsContent>
       </Tabs>

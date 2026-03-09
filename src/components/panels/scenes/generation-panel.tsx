@@ -83,7 +83,7 @@ export function GenerationPanel({ selectedScene, onSceneCreated }: GenerationPan
     currentFolderId,
   } = useSceneStore();
 
-  const { pendingSceneData, setPendingSceneData } = useMediaPanelStore();
+  const { pendingSceneData, setPendingSceneData, setActiveTab } = useMediaPanelStore();
   const { addMediaFromUrl, getOrCreateCategoryFolder } = useMediaStore();
   
   // 获取当前项目的分镜数据，用于提取场景道具
@@ -146,8 +146,12 @@ export function GenerationPanel({ selectedScene, onSceneCreated }: GenerationPan
   const [contactSheetAspectRatio, setContactSheetAspectRatio] = useState<'16:9' | '9:16'>('16:9');
   // 批量四视图状态
   const [savedChildSceneIds, setSavedChildSceneIds] = useState<string[]>([]); // 刚保存的子场景 ID
-
+  
   const isGenerating = generationStatus === 'generating';
+
+  const handleBackToScript = () => {
+    setActiveTab("script");
+  };
 
   // Fill form when scene selected
   useEffect(() => {
@@ -2495,9 +2499,19 @@ ${anchor} 的背面直视镜头。展示后部结构。背景是物体面向的�
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="md:h-full flex flex-col">
       <div className="p-3 pb-2 border-b space-y-2">
-        <h3 className="font-medium text-sm">生成控制台</h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-medium text-sm">生成控制台</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-primary"
+            onClick={handleBackToScript}
+          >
+            返回剧本
+          </Button>
+        </div>
         {/* 生成模式切换 */}
         <ToggleGroup 
           type="single" 

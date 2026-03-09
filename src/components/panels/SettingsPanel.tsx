@@ -523,7 +523,8 @@ export function SettingsPanel() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
+    // 顶层不处理滚动，交给外层 Layout；桌面端占满高度
+    <div className="flex flex-col bg-background w-full md:h-full md:overflow-hidden">
       {/* Header */}
       <div className="h-12 md:h-16 border-b border-border bg-panel px-3 md:px-6 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
@@ -545,7 +546,7 @@ export function SettingsPanel() {
         )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="md:flex-1 md:flex md:flex-col md:overflow-hidden">
         <div className="border-b border-border px-2 md:px-6 overflow-x-auto">
           <TabsList className="h-10 md:h-12 bg-transparent p-0 gap-2 md:gap-4 min-w-max">
             <TabsTrigger 
@@ -596,8 +597,8 @@ export function SettingsPanel() {
         </div>
 
         {/* API Management Tab */}
-        <TabsContent value="api" className="flex-1 overflow-hidden mt-0">
-          <div className="h-full overflow-y-auto overflow-x-hidden">
+        <TabsContent value="api" className="md:flex-1 md:overflow-hidden mt-0 md:h-full">
+          <div className="md:h-full md:overflow-y-auto overflow-x-hidden min-h-0">
             <div className="p-2 md:p-8 max-w-5xl mx-auto space-y-3 md:space-y-8">
           {/* Security Notice */}
           <div className="flex items-start gap-2 md:gap-3 p-2 md:p-4 bg-muted/50 border border-border rounded-lg">
@@ -898,15 +899,15 @@ export function SettingsPanel() {
               {/* About */}
           <div className="text-center py-4 md:py-8 text-muted-foreground border-t border-border">
             <p className="text-xs md:text-sm font-medium">Moyin Creator</p>
-            <p className="text-[10px] md:text-xs mt-1">v0.1.30 · AI 驱动的动漫视频创作工具</p>
+            <p className="text-[10px] md:text-xs mt-1">v0.1.31 · AI 驱动的动漫视频创作工具</p>
               </div>
             </div>
           </div>
         </TabsContent>
 
         {/* Advanced Options Tab */}
-        <TabsContent value="advanced" className="flex-1 overflow-hidden mt-0">
-          <div className="h-full overflow-y-auto">
+        <TabsContent value="advanced" className="md:flex-1 md:overflow-hidden mt-0 md:h-full">
+          <div className="md:h-full md:overflow-y-auto">
             <div className="p-3 md:p-8 max-w-3xl mx-auto space-y-4 md:space-y-8">
               {/* Header */}
               <div className="flex items-start justify-between">
@@ -1048,16 +1049,17 @@ export function SettingsPanel() {
               {/* About */}
               <div className="text-center py-4 md:py-8 text-muted-foreground border-t border-border">
                 <p className="text-xs md:text-sm font-medium">Moyin Creator</p>
-                <p className="text-[10px] md:text-xs mt-1">v0.1.30 · AI 驱动的动漫视频创作工具</p>
+                <p className="text-[10px] md:text-xs mt-1">v0.1.31 · AI 驱动的动漫视频创作工具</p>
               </div>
             </div>
           </div>
         </TabsContent>
 
         {/* Image Host Config Tab */}
-        <TabsContent value="imagehost" className="flex-1 overflow-hidden mt-0">
-          <ScrollArea className="h-full">
-            <div className="p-8 max-w-3xl mx-auto space-y-8">
+        <TabsContent value="imagehost" className="md:flex-1 md:overflow-hidden mt-0 md:h-full">
+          {/* 移动端不再使用内部 ScrollArea，交给外层 Layout 滚动；桌面端在此层处理垂直滚动 */}
+          <div className="md:h-full md:overflow-y-auto overflow-x-hidden min-h-0" data-scrollable>
+            <div className="p-4 md:p-8 max-w-3xl mx-auto space-y-6 md:space-y-8">
               {/* Header */}
               <div>
                 <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
@@ -1148,7 +1150,7 @@ export function SettingsPanel() {
               </div>
 
               {/* Info Notice */}
-              <div className="flex items-start gap-3 p-4 bg-muted/50 border border-border rounded-lg">
+              <div className="flex items-start gap-3 p-4 bg-muted/50 border border-border rounded-lg mb-4 md:mb-8">
                 <Info className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
@@ -1189,17 +1191,17 @@ export function SettingsPanel() {
               </div>
 
               {/* About */}
-              <div className="text-center py-8 text-muted-foreground border-t border-border">
+              <div className="text-center py-6 md:py-8 text-muted-foreground border-t border-border">
                 <p className="text-sm font-medium">Moyin Creator</p>
-                <p className="text-xs mt-1">v0.1.30 · AI 驱动的动漫视频创作工具</p>
+                <p className="text-xs mt-1">v0.1.31 · AI 驱动的动漫视频创作工具</p>
               </div>
             </div>
-          </ScrollArea>
+          </div>
         </TabsContent>
 
         {/* Storage Tab */}
-        <TabsContent value="storage" className="flex-1 overflow-hidden mt-0">
-          <ScrollArea className="h-full">
+        <TabsContent value="storage" className="md:flex-1 md:overflow-hidden mt-0 md:h-full">
+          <ScrollArea className="md:h-full">
             <div className="p-8 max-w-3xl mx-auto space-y-8">
               {/* Header */}
               <div>
@@ -1399,15 +1401,15 @@ export function SettingsPanel() {
               {/* About */}
               <div className="text-center py-8 text-muted-foreground border-t border-border">
                 <p className="text-sm font-medium">Moyin Creator</p>
-                <p className="text-xs mt-1">v0.1.30 · AI 驱动的动漫视频创作工具</p>
+                <p className="text-xs mt-1">v0.1.31 · AI 驱动的动漫视频创作工具</p>
               </div>
             </div>
           </ScrollArea>
         </TabsContent>
 
         {/* License Tab */}
-        <TabsContent value="license" className="flex-1 overflow-hidden mt-0">
-          <ScrollArea className="h-full">
+        <TabsContent value="license" className="md:flex-1 md:overflow-hidden mt-0 md:h-full">
+          <ScrollArea className="md:h-full">
             <div className="p-8 max-w-3xl mx-auto space-y-8">
               <div>
                 <h3 className="text-lg font-bold text-foreground flex items-center gap-2">

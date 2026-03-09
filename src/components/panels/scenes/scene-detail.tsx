@@ -153,7 +153,7 @@ export function SceneDetail({ scene }: SceneDetailProps) {
   const atmosphereLabel = ATMOSPHERE_PRESETS.find(a => a.id === scene.atmosphere)?.label || scene.atmosphere;
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="md:h-full flex flex-col md:overflow-hidden">
       {/* Header */}
       <div className="p-3 pb-2 border-b">
         {isEditingName ? (

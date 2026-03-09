@@ -94,7 +94,7 @@ export function GenerationPanel({ selectedCharacter, onCharacterCreated }: Gener
   } = useCharacterLibraryStore();
   const { activeProjectId } = useProjectStore();
   
-  const { pendingCharacterData, setPendingCharacterData } = useMediaPanelStore();
+  const { pendingCharacterData, setPendingCharacterData, setActiveTab } = useMediaPanelStore();
   const { addMediaFromUrl, getOrCreateCategoryFolder } = useMediaStore();
   
   // Form state
@@ -136,6 +136,10 @@ export function GenerationPanel({ selectedCharacter, onCharacterCreated }: Gener
   const [isManuallyModified, setIsManuallyModified] = useState(false);
 
   const isGenerating = generationStatus === 'generating';
+
+  const handleBackToScript = () => {
+    setActiveTab("script");
+  };
   
   // 检查是否有 AI 校准数据
   const hasCalibrationData = !!(identityAnchors || charNegativePrompt || visualPromptEn || visualPromptZh);
@@ -497,12 +501,20 @@ export function GenerationPanel({ selectedCharacter, onCharacterCreated }: Gener
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      <div className="p-3 pb-2 border-b shrink-0">
+    <div className="md:h-full flex flex-col md:overflow-hidden">
+      <div className="p-3 pb-2 border-b shrink-0 flex items-center justify-between gap-2">
         <h3 className="font-medium text-sm">生成控制台</h3>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs text-muted-foreground hover:text-primary"
+          onClick={handleBackToScript}
+        >
+          返回剧本
+        </Button>
       </div>
       
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1 min-h-0 md:overflow-y-auto">
         <div className="p-3 space-y-4">
           {/* Character name */}
           <div className="space-y-2">

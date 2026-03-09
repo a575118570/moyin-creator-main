@@ -367,13 +367,13 @@ export function SplitSceneCard({
             value={scene.shotSize}
             onChange={(v) => onUpdateShotSize(scene.id, v)}
             disabled={isGeneratingAny}
-            className="w-24"
+            className="w-28 md:w-32"
           />
         </div>
         {!isGeneratingAny && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <button className="p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+              <button className="p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </AlertDialogTrigger>
@@ -398,44 +398,75 @@ export function SplitSceneCard({
         )}
       </div>
 
-      {/* 第一排：首帧图片 + 尾帧图片 + 角色库选择 */}
-      <div className="p-2 space-y-2">
+      {/* 第一排：按钮行 + 上传区域（两块） */}
+      <div className="px-2 pt-2 pb-0 space-y-0.5">
+        {/* 顶部按钮：首帧 / 尾帧 / 需要-可选 / AI生成 */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setSelectedFrameTarget('start')}
+            className={cn(
+              "text-xs px-2.5 py-1.5 rounded-md transition-colors font-medium",
+              selectedFrameTarget === 'start'
+                ? "bg-primary/20 text-primary"
+                : "text-muted-foreground hover:text-foreground bg-muted/30"
+            )}
+          >
+            首帧
+          </button>
+          <button
+            onClick={() => setSelectedFrameTarget('end')}
+            className={cn(
+              "text-xs px-2.5 py-1.5 rounded-md transition-colors font-medium",
+              selectedFrameTarget === 'end'
+                ? "bg-orange-500/20 text-orange-500"
+                : "text-muted-foreground hover:text-foreground bg-muted/30"
+            )}
+          >
+            尾帧
+          </button>
+          <button
+            onClick={() => onUpdateNeedsEndFrame(scene.id, !scene.needsEndFrame)}
+            disabled={isGeneratingAny}
+            className={cn(
+              "text-xs px-2.5 py-1.5 rounded-md transition-colors",
+              scene.needsEndFrame
+                ? "bg-orange-500/20 text-orange-500 hover:bg-orange-500/30"
+                : "bg-muted text-muted-foreground/60 hover:bg-muted/80"
+            )}
+          >
+            {scene.needsEndFrame ? '需要' : '可选'}
+          </button>
+          {/* 尾帧AI生成按钮：无论是"需要尾帧"还是"可选尾帧"都可以生成 */}
+          {!hasEndFrame && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onGenerateEndFrame?.(scene.id); }}
+              disabled={isGeneratingAny || scene.endFrameStatus === 'generating'}
+              className={cn(
+                "text-xs px-2.5 py-1.5 rounded-md disabled:opacity-50 transition-colors flex items-center gap-1",
+                scene.needsEndFrame 
+                  ? "bg-orange-500/20 text-orange-500 hover:bg-orange-500/30"
+                  : "bg-blue-500/20 text-blue-500 hover:bg-blue-500/30"
+              )}
+            >
+              {scene.endFrameStatus === 'generating' ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>{scene.endFrameProgress}%</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>AI生成</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* 上传区域：两个上传框排成一行 */}
         <div className="flex gap-2">
           {/* 首帧图片 */}
           <div className="flex-1">
-            <div className="flex items-center justify-between mb-1">
-              <button
-                onClick={() => setSelectedFrameTarget('start')}
-                className={cn(
-                  "text-[10px] px-1.5 py-0.5 rounded transition-colors",
-                  selectedFrameTarget === 'start'
-                    ? "bg-primary/20 text-primary font-medium"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                首帧
-              </button>
-              {hasImage && (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onAngleSwitch?.(scene.id, "start"); }}
-                    disabled={isAngleSwitching}
-                    className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 hover:bg-amber-500/30 disabled:opacity-50 flex items-center gap-0.5"
-                  >
-                    <RotateCw className="h-2.5 w-2.5" />
-                    视角
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onQuadGrid?.(scene.id, "start"); }}
-                    disabled={isQuadGridGenerating}
-                    className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-600 hover:bg-cyan-500/30 disabled:opacity-50 flex items-center gap-0.5"
-                  >
-                    <Grid2X2 className="h-2.5 w-2.5" />
-                    四宫格
-                  </button>
-                </div>
-              )}
-            </div>
             <div 
               className={cn(
                 "aspect-video bg-muted rounded cursor-pointer relative group/image overflow-hidden border-2 transition-colors",
@@ -526,74 +557,6 @@ export function SplitSceneCard({
 
           {/* 尾帧图片 */}
           <div className="flex-1">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setSelectedFrameTarget('end')}
-                  className={cn(
-                    "text-[10px] px-1.5 py-0.5 rounded transition-colors",
-                    selectedFrameTarget === 'end'
-                      ? "bg-orange-500/20 text-orange-500 font-medium"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  尾帧
-                </button>
-                <button
-                  onClick={() => onUpdateNeedsEndFrame(scene.id, !scene.needsEndFrame)}
-                  disabled={isGeneratingAny}
-                  className={cn(
-                    "text-[9px] px-1 py-0.5 rounded transition-colors",
-                    scene.needsEndFrame
-                      ? "bg-orange-500/20 text-orange-500 hover:bg-orange-500/30"
-                      : "bg-muted text-muted-foreground/60 hover:bg-muted/80"
-                  )}
-                >
-                  {scene.needsEndFrame ? '需要' : '可选'}
-                </button>
-              </div>
-              <div className="flex items-center gap-1">
-                {hasEndFrame && (
-                  <>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onAngleSwitch?.(scene.id, "end"); }}
-                      disabled={isAngleSwitching}
-                      className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 hover:bg-amber-500/30 disabled:opacity-50 flex items-center gap-0.5"
-                    >
-                      <RotateCw className="h-2.5 w-2.5" />
-                      视角
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onQuadGrid?.(scene.id, "end"); }}
-                      disabled={isQuadGridGenerating}
-                      className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-600 hover:bg-cyan-500/30 disabled:opacity-50 flex items-center gap-0.5"
-                    >
-                      <Grid2X2 className="h-2.5 w-2.5" />
-                      四宫格
-                    </button>
-                  </>
-                )}
-              {/* 尾帧AI生成按钮：无论是“需要尾帧”还是“可选尾帧”都可以生成 */}
-                {!hasEndFrame && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onGenerateEndFrame?.(scene.id); }}
-                    disabled={isGeneratingAny || scene.endFrameStatus === 'generating'}
-                    className={cn(
-                      "text-[9px] px-1.5 py-0.5 rounded disabled:opacity-50",
-                      scene.needsEndFrame 
-                        ? "bg-orange-500/20 text-orange-500 hover:bg-orange-500/30"
-                        : "bg-blue-500/20 text-blue-500 hover:bg-blue-500/30"
-                    )}
-                  >
-                    {scene.endFrameStatus === 'generating' ? (
-                      <span className="flex items-center gap-0.5"><Loader2 className="h-2.5 w-2.5 animate-spin" />{scene.endFrameProgress}%</span>
-                    ) : (
-                      <span className="flex items-center gap-0.5"><Sparkles className="h-2.5 w-2.5" />AI生成</span>
-                    )}
-                  </button>
-                )}
-              </div>
-            </div>
             <div 
               className={cn(
                 "aspect-video bg-muted rounded cursor-pointer relative group/endframe overflow-hidden border-2 transition-colors",
@@ -689,7 +652,7 @@ export function SplitSceneCard({
           </div>
 
           {/* 角色库 + 场景参考选择 */}
-          <div className="flex flex-col gap-1 justify-end">
+          <div className="flex flex-col gap-1">
             <CharacterSelector
               selectedIds={scene.characterIds || []}
               onChange={(ids) => onUpdateCharacters(scene.id, ids)}
@@ -747,60 +710,75 @@ export function SplitSceneCard({
         </div>
 
         {/* 第二排：生成图片/视频按钮 + 视频预览/状态 */}
-        <div className="flex items-center gap-2">
+        <div className="-mt-2 md:mt-1 flex items-center gap-2">
           {!hasImage ? (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2 md:gap-1">
               <Button
                 size="sm"
                 variant="default"
-                className="h-7 text-xs"
+                className="h-8 text-xs px-3"
                 onClick={() => onGenerateImage?.(scene.id)}
                 disabled={isGeneratingAny || isImageGenerating}
               >
                 {isImageGenerating ? (
-                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" />生成中 {scene.imageProgress}%</>
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    生成中 {scene.imageProgress}%
+                  </>
                 ) : (
-                  <><ImageIcon className="h-3 w-3 mr-1" />生成图片</>
+                  <>
+                    <ImageIcon className="h-3.5 w-3.5 mr-1" />
+                    生成图片
+                  </>
                 )}
               </Button>
               {isImageGenerating && (
                 <Button
                   size="sm"
                   variant="destructive"
-                  className="h-7 text-xs px-2"
+                  className="h-8 text-xs px-2.5"
                   onClick={() => onStopImageGeneration?.(scene.id)}
                   title="停止生成"
                 >
-                  <Square className="h-3 w-3" />
+                  <Square className="h-3.5 w-3.5" />
                 </Button>
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2 md:gap-1">
               <Button
                 size="sm"
                 variant={isVideoReady ? "outline" : "default"}
-                className="h-7 text-xs"
+                className="h-8 text-xs px-3"
                 onClick={() => onGenerateVideo?.(scene.id)}
                 disabled={isGeneratingAny || isVideoGenerating}
               >
                 {isVideoGenerating ? (
-                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" />生成中 {scene.videoProgress}%</>
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    生成中 {scene.videoProgress}%
+                  </>
                 ) : isVideoReady ? (
-                  <><RefreshCw className="h-3 w-3 mr-1" />重新生成</>
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                    重新生成
+                  </>
                 ) : (
-                  <><Play className="h-3 w-3 mr-1" />生成视频</>
+                  <>
+                    <Play className="h-3.5 w-3.5 mr-1" />
+                    生成视频
+                  </>
                 )}
               </Button>
               {isVideoGenerating && (
                 <Button
                   size="sm"
                   variant="destructive"
-                  className="h-7 text-xs px-2"
+                  className="h-8 text-xs px-2.5"
                   onClick={() => onStopVideoGeneration?.(scene.id)}
                   title="停止生成"
                 >
-                  <Square className="h-3 w-3" />
+                  <Square className="h-3.5 w-3.5" />
                 </Button>
               )}
             </div>
@@ -874,40 +852,44 @@ export function SplitSceneCard({
             <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform duration-200", showPromptDetails && "rotate-90")} />
             <span className="text-xs font-medium">提示词</span>
             {/* 填充状态徽章 */}
-            <div className="flex items-center gap-1.5 ml-auto">
+            <div className="flex items-center gap-2 md:gap-1.5 ml-auto">
               <span className={cn(
-                "text-[9px] px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5 border",
+                "text-xs md:text-[9px] px-2 md:px-1.5 py-1 md:py-0.5 rounded-full inline-flex items-center gap-1 md:gap-0.5 border",
                 scene.actionSummary
                   ? "bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/20"
                   : "bg-muted text-muted-foreground/40 border-transparent"
               )}>
-                <Edit3 className="h-2.5 w-2.5" /> 剧本
+                <Edit3 className="h-3 w-3 md:h-2.5 md:w-2.5" /> 
+                <span className="md:hidden">剧本</span>
               </span>
               <span className={cn(
-                "text-[9px] px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5 border",
+                "text-xs md:text-[9px] px-2 md:px-1.5 py-1 md:py-0.5 rounded-full inline-flex items-center gap-1 md:gap-0.5 border",
                 (scene.imagePromptZh || scene.imagePrompt)
                   ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/20"
                   : "bg-muted text-muted-foreground/40 border-transparent"
               )}>
-                <ImageIcon className="h-2.5 w-2.5" /> 首帧
+                <ImageIcon className="h-3 w-3 md:h-2.5 md:w-2.5" /> 
+                <span className="md:hidden">首帧</span>
               </span>
               <span className={cn(
-                "text-[9px] px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5 border",
+                "text-xs md:text-[9px] px-2 md:px-1.5 py-1 md:py-0.5 rounded-full inline-flex items-center gap-1 md:gap-0.5 border",
                 (scene.endFramePromptZh || scene.endFramePrompt)
                   ? "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/20"
                   : scene.needsEndFrame
                     ? "bg-orange-500/5 text-orange-400/60 border-dashed border-orange-400/30"
                     : "bg-muted text-muted-foreground/40 border-transparent"
               )}>
-                ◉ 尾帧
+                <span className="text-sm md:text-xs">◉</span>
+                <span className="md:hidden">尾帧</span>
               </span>
               <span className={cn(
-                "text-[9px] px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5 border",
+                "text-xs md:text-[9px] px-2 md:px-1.5 py-1 md:py-0.5 rounded-full inline-flex items-center gap-1 md:gap-0.5 border",
                 (scene.videoPromptZh || scene.videoPrompt)
                   ? "bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/20"
                   : "bg-muted text-muted-foreground/40 border-transparent"
               )}>
-                <Play className="h-2.5 w-2.5" /> 视频
+                <Play className="h-3 w-3 md:h-2.5 md:w-2.5" /> 
+                <span className="md:hidden">视频</span>
               </span>
             </div>
           </button>

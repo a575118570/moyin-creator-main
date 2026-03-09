@@ -130,7 +130,8 @@ function App() {
       // 试用未到期，允许进入主界面
       console.log('[App] Trial active, showing main layout');
       return (
-        <div className="h-screen w-screen overflow-hidden">
+        // 使用自然滚动布局，由页面内容决定高度
+        <div className="w-full min-h-screen">
           <Layout />
           <Toaster richColors position="top-center" />
         </div>
@@ -144,7 +145,8 @@ function App() {
 
   console.log('[App] License valid, showing main layout');
   return (
-    <div className="h-screen w-screen overflow-hidden">
+    // 使用自然滚动布局，由页面内容决定高度
+    <div className="w-full min-h-screen">
       <Layout />
       <Toaster richColors position="top-center" />
     </div>

@@ -75,9 +75,9 @@ export function SClassView() {
   );
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="md:h-full flex flex-col">
       {/* Header */}
-      <div className="p-3 pb-2 bg-panel">
+      <div className="p-3 pb-2 bg-panel flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
@@ -103,8 +103,8 @@ export function SClassView() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-3 pt-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      {/* Content - allow mobile to use outer layout scroll, desktop keeps inner scroll */}
+      <div className="flex-1 md:overflow-y-auto p-3 pt-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {hasSplitScenes || storyboardStatus === 'editing' ? (
           <SClassScenes />
         ) : (

@@ -15,7 +15,7 @@ export function RightPanel() {
         return <DirectorContextPanel />;
       default:
         return (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
+          <div className="md:flex-1 flex items-center justify-center text-muted-foreground text-sm py-4 px-2">
             <p>待定</p>
           </div>
         );
@@ -23,11 +23,13 @@ export function RightPanel() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-panel">
-      <div className="p-3 border-b border-border">
+    <div className="md:h-full flex flex-col bg-panel min-h-0">
+      <div className="p-2 md:p-3 border-b border-border flex-shrink-0">
         <h3 className="font-medium text-sm">属性</h3>
       </div>
-      {renderContent()}
+      <div className="md:flex-1 md:overflow-y-auto min-h-0 py-2">
+        {renderContent()}
+      </div>
     </div>
   );
 }

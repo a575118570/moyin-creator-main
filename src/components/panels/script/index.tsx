@@ -2025,7 +2025,7 @@ export function ScriptView() {
       {/* ========== 手机端布局（独立，不影响桌面端） ========== */}
       {/* 手机端：垂直布局，可滚动 - 仅在 < 768px 显示 */}
       {/* 三个面板上下排列：剧本输入 -> 层级结构 -> 属性面板 */}
-      <div className="md:hidden flex-1 overflow-y-auto">
+      <div className="md:hidden flex-1">
         <div className="flex flex-col gap-3 p-2">
           {/* 第一个面板：剧本输入 */}
           <div className="w-full min-h-[300px] flex-shrink-0 border rounded-lg overflow-hidden">

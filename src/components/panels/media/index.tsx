@@ -103,7 +103,7 @@ function FolderContextMenu({
   }
   return (
     <ContextMenu>
-      <ContextMenuTrigger>{children}</ContextMenuTrigger>
+      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem onClick={() => onRename(folder)}>
           <Pencil className="h-4 w-4 mr-2" />
@@ -148,7 +148,7 @@ function MediaItemWithContextMenu({
   
   return (
     <ContextMenu>
-      <ContextMenuTrigger>{children}</ContextMenuTrigger>
+      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent>
         {/* AI 导演功能 - 仅图片显示 */}
         {isImage && onSmartSplit && onGenerateScenes && (
@@ -194,7 +194,11 @@ function MediaItemWithContextMenu({
         <ContextMenuSeparator />
         <ContextMenuItem
           className="text-destructive"
-          onClick={(e) => onRemove(e, item.id)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onRemove(e, item.id);
+          }}
         >
           <Trash2 className="h-4 w-4 mr-2" />
           删除
@@ -297,21 +301,33 @@ export function MediaView() {
 
   const handleRemove = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
+    e.preventDefault();
     if (!activeProject) {
       toast.error("没有活动项目");
       return;
     }
-    await removeMediaFile(activeProject.id, id);
-    toast.success("已删除");
+    try {
+      await removeMediaFile(activeProject.id, id);
+      toast.success("已删除");
+    } catch (error) {
+      console.error('[MediaView] Error removing media file:', error);
+      toast.error("删除失败: " + (error instanceof Error ? error.message : String(error)));
+    }
   };
 
   const handlePreview = (item: MediaFile) => {
-    if (!item.url) return;
+    if (!item.url) {
+      toast.error("无法预览：文件 URL 不可用");
+      return;
+    }
+    console.log('[MediaView] Setting preview item:', { name: item.name, url: item.url, type: item.type });
     setPreviewItem({
       type: item.type === "video" ? "video" : "image",
       url: item.url,
       name: item.name,
     });
+    // 确保预览面板显示
+    toast.success(`预览: ${item.name}`, { duration: 1000 });
   };
 
   const handleExport = async (item: MediaFile) => {
@@ -665,7 +681,7 @@ export function MediaView() {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="md:h-full flex flex-col w-full min-h-0 h-auto">
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
@@ -677,7 +693,7 @@ export function MediaView() {
       />
 
       {/* Header */}
-      <div className="p-3 pb-2 bg-panel">
+      <div className="p-2 md:p-3 pb-2 bg-panel flex-shrink-0">
         <div className="flex items-center justify-between mb-2">
           <h2 className="font-semibold text-sm">素材库</h2>
           <span className="text-xs text-muted-foreground">
@@ -782,14 +798,14 @@ export function MediaView() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content - allow mobile to use outer layout scroll, desktop keeps inner scroll */}
       <div
-        className="flex-1 overflow-y-auto p-3 pt-1 scrollbar-thin"
+        className="md:flex-1 md:overflow-y-auto p-2 md:p-3 pt-1 scrollbar-thin min-h-0 flex-shrink-0"
         onDrop={handleDrop}
         onDragOver={handleDragOver}
       >
         {currentFolders.length === 0 && filteredMediaItems.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed border-border rounded-lg">
+          <div className="flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed border-border rounded-lg py-8 max-h-[300px] md:max-h-none md:min-h-0 md:h-full">
             <CloudUpload className="h-12 w-12 mb-2 opacity-50" />
             <p className="text-sm">拖放文件到这里</p>
             <p className="text-xs">或点击上传按钮</p>
@@ -811,7 +827,11 @@ export function MediaView() {
                       <div
                         key={folder.id}
                         className="cursor-pointer hover:opacity-80 transition-opacity"
-                        onDoubleClick={() => setCurrentFolder(folder.id)}
+                        onClick={() => setCurrentFolder(folder.id)}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentFolder(folder.id);
+                        }}
                       >
                         <div className="w-[100px] h-[100px] rounded overflow-hidden bg-primary/5 flex flex-col items-center justify-center border border-primary/20 hover:border-primary/50 gap-1">
                           <IconComp className="h-8 w-8 text-primary/70" />
@@ -847,7 +867,11 @@ export function MediaView() {
                       >
                         <div
                           className="cursor-pointer hover:opacity-80 transition-opacity"
-                          onDoubleClick={() => setCurrentFolder(folder.id)}
+                          onClick={() => setCurrentFolder(folder.id)}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentFolder(folder.id);
+                          }}
                         >
                           <div className="w-[100px] h-[100px] rounded overflow-hidden bg-muted/50 flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/20 hover:border-primary/50 gap-1">
                             <Folder className="h-8 w-8 text-primary/70" />
@@ -873,7 +897,17 @@ export function MediaView() {
                     >
                       <div
                         className="cursor-pointer hover:opacity-80 transition-opacity relative"
-                        onClick={() => handlePreview(item)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePreview(item);
+                        }}
+                        onMouseDown={(e) => {
+                          // 鼠标按下时也触发预览（桌面端）
+                          if (e.button === 0) { // 左键
+                            e.stopPropagation();
+                            handlePreview(item);
+                          }
+                        }}
                         draggable={item.type === "video"}
                         onDragStart={(e) => {
                           if (item.type === "video") {
@@ -893,7 +927,7 @@ export function MediaView() {
                           }
                         }}
                       >
-                        <div className="w-[100px] h-[100px] rounded overflow-hidden bg-muted relative">
+                        <div className="w-[100px] h-[100px] rounded overflow-hidden bg-muted relative group">
                           {renderPreview(item)}
                           {/* AI source badge */}
                           {item.source && item.source !== 'upload' && (
@@ -901,6 +935,19 @@ export function MediaView() {
                               <Sparkles className="h-3 w-3 text-white" />
                             </div>
                           )}
+                          {/* Delete button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handleRemove(e, item.id);
+                            }}
+                            className="absolute top-1 right-1 bg-black/60 hover:bg-red-500/90 active:bg-red-600 rounded-full p-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all z-10 backdrop-blur-sm"
+                            title="删除"
+                            aria-label="删除"
+                          >
+                            <Trash2 className="h-2 w-2 text-white" />
+                          </button>
                         </div>
                         <p className="text-xs mt-1 truncate">{item.name}</p>
                       </div>
@@ -923,7 +970,11 @@ export function MediaView() {
                     <div
                       key={folder.id}
                       className="flex items-center gap-2 p-2 rounded hover:bg-accent cursor-pointer"
-                      onDoubleClick={() => setCurrentFolder(folder.id)}
+                      onClick={() => setCurrentFolder(folder.id)}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentFolder(folder.id);
+                      }}
                     >
                       <div className="w-12 h-12 rounded bg-primary/5 flex items-center justify-center flex-shrink-0 border border-primary/20">
                         <IconComp className="h-6 w-6 text-primary/70" />
@@ -954,7 +1005,11 @@ export function MediaView() {
                     >
                       <div
                         className="flex items-center gap-2 p-2 rounded hover:bg-accent cursor-pointer"
-                        onDoubleClick={() => setCurrentFolder(folder.id)}
+                        onClick={() => setCurrentFolder(folder.id)}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentFolder(folder.id);
+                        }}
                       >
                         <div className="w-12 h-12 rounded bg-muted/50 flex items-center justify-center flex-shrink-0">
                           <Folder className="h-6 w-6 text-primary/70" />
@@ -984,7 +1039,18 @@ export function MediaView() {
               >
                 <div
                   className="flex items-center gap-2 p-2 rounded hover:bg-accent cursor-pointer"
-                  onClick={() => handlePreview(item)}
+                  onClick={(e) => {
+                    console.log('[MediaView] List item clicked:', item.name);
+                    e.stopPropagation();
+                    handlePreview(item);
+                  }}
+                  onMouseDown={(e) => {
+                    // 鼠标按下时也触发预览（桌面端）
+                    if (e.button === 0) { // 左键
+                      e.stopPropagation();
+                      handlePreview(item);
+                    }
+                  }}
                   draggable={item.type === "video"}
                   onDragStart={(e) => {
                     if (item.type === "video") {
@@ -1004,13 +1070,26 @@ export function MediaView() {
                     }
                   }}
                 >
-                  <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0 relative">
+                  <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0 relative group">
                     {renderPreview(item)}
                     {item.source && item.source !== 'upload' && (
                       <div className="absolute top-0.5 left-0.5 bg-primary/80 rounded p-0.5">
                         <Sparkles className="h-2 w-2 text-white" />
                       </div>
                     )}
+                    {/* Delete button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleRemove(e, item.id);
+                      }}
+                      className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-red-500/90 active:bg-red-600 rounded-full p-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all z-10 backdrop-blur-sm"
+                      title="删除"
+                      aria-label="删除"
+                    >
+                      <Trash2 className="h-1.5 w-1.5 text-white" />
+                    </button>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm truncate">{item.name}</p>

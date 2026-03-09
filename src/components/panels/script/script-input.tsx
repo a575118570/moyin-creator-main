@@ -219,7 +219,7 @@ export function ScriptInput({
               placeholder="支持的格式：\n• 第X集（集标记）\n• **1-1日 内 地点**（场景头）\n• 人物：角色A、角色B\n• 角色名：（动作）台词\n• △动作描写\n• 【字幕】【闪回】等"
               value={rawScript}
               onChange={(e) => onRawScriptChange(e.target.value)}
-              className="min-h-[200px] resize-none text-sm"
+              className="min-h-[260px] md:min-h-[320px] resize-none text-sm"
               disabled={parseStatus === "parsing" || isImporting}
             />
             {/* 导入状态提示 */}

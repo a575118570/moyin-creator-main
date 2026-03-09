@@ -59,7 +59,8 @@ export function ExportView() {
     : shots.reduce((acc, s) => acc + (s.duration || 3), 0);
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
+    // 顶层不处理滚动，交给外层 Layout；桌面端占满高度
+    <div className="flex flex-col bg-background w-full md:h-full md:overflow-hidden">
       {/* Header */}
       <div className="h-16 border-b border-border bg-panel px-6 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
@@ -78,7 +79,7 @@ export function ExportView() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="md:flex-1">
         <div className="p-8 md:p-12">
           <div className="max-w-6xl mx-auto space-y-8">
             {/* Main Status Panel */}

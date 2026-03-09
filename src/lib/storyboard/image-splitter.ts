@@ -56,11 +56,70 @@ export interface SplitConfig {
  */
 export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = (e) => reject(new Error(`Failed to load image: ${e}`));
-    img.src = src;
+    if (!src) {
+      reject(new Error('故事板图片地址为空，无法加载。'));
+      return;
+    }
+
+    // 桌面版使用的 local-image:// 协议在浏览器/手机端是无效的
+    if (src.startsWith('local-image://') || src.startsWith('local-video://')) {
+      reject(new Error('当前故事板图片是桌面版本地路径（local-image://），在手机/浏览器中无法加载，请在此设备重新上传图片到素材库后再尝试切割。'));
+      return;
+    }
+
+    /**
+     * 有些图床（尤其是第三方对象存储）没有正确配置 CORS，
+     * 直接用 crossOrigin="anonymous" 去 load 会失败，但用户在浏览器中单独打开是没问题的。
+     *
+     * 这里采用两段式加载：
+     * 1. 先尝试带 crossOrigin（如果服务器支持 CORS，可以保证后续 canvas 不被污染）
+     * 2. 如果失败，再自动退回到不带 crossOrigin 的普通加载，以尽量避免“能在浏览器打开但代码里加载失败”的情况
+     */
+
+    const tryLoad = (withCORS: boolean) => {
+      const img = new Image();
+      if (withCORS) {
+        img.crossOrigin = 'anonymous';
+      }
+
+      img.onload = () => resolve(img);
+      img.onerror = (e) => {
+        // 如果是带 CORS 的首次尝试失败，自动再试一次不带 crossOrigin
+        if (withCORS) {
+          console.warn('[ImageSplitter] Image load with CORS failed, retrying without CORS...', {
+            event: e,
+            srcPreview: src?.slice(0, 128) || '',
+          });
+          tryLoad(false);
+          return;
+        }
+
+        // 最终失败：给出友好错误信息 + 调试日志
+        console.error('[ImageSplitter] Failed to load image', {
+          event: e,
+          srcPreview: src?.slice(0, 128) || '',
+        });
+
+        let hostHint = '';
+        try {
+          const url = new URL(src);
+          hostHint = url.hostname;
+        } catch {
+          // src 可能是 data:URL 或自定义协议，忽略解析错误
+        }
+
+        const message = hostHint
+          ? `故事板图片加载失败（来源：${hostHint}），请检查网络 / 图片服务映射或重新生成故事板。`
+          : '故事板图片加载失败，请检查网络或重新生成故事板。';
+
+        reject(new Error(message));
+      };
+
+      img.src = src;
+    };
+
+    // 先按原行为尝试带 CORS 加载，失败时自动回退
+    tryLoad(true);
   });
 }
 
@@ -425,7 +484,19 @@ export function isCellEmpty(canvas: HTMLCanvasElement, threshold: number = 30): 
   const stepX = Math.max(1, Math.floor(width / 10));
   const stepY = Math.max(1, Math.floor(height / 10));
   
-  const imageData = ctx.getImageData(0, 0, width, height);
+  let imageData: ImageData;
+  try {
+    imageData = ctx.getImageData(0, 0, width, height);
+  } catch (e: any) {
+    // 如果画布被跨域图片污染（tainted），getImageData 会抛 SecurityError。
+    // 这种情况下我们无法做“空格子检测”，但可以退化为“全部当作非空处理”，
+    // 避免整个切割流程直接失败。
+    if (typeof DOMException !== 'undefined' && e instanceof DOMException && e.name === 'SecurityError') {
+      console.warn('[ImageSplitter] Canvas is tainted by cross-origin data, skip empty-cell detection for this cell.');
+      return false;
+    }
+    throw e;
+  }
   const data = imageData.data;
   
   // Get reference color from center
@@ -654,10 +725,26 @@ export async function splitStoryboardImage(
 
     // No further trimming needed as we strictly enforced the aspect ratio and margin above
 
+    let cellDataUrl: string;
+    try {
+      cellDataUrl = cellCanvas.toDataURL('image/png');
+    } catch (e: any) {
+      // 如果画布被跨域图片污染，toDataURL 也会抛 SecurityError。
+      // 这种情况下，浏览器根本不允许我们导出像素数据进行切割。
+      if (typeof DOMException !== 'undefined' && e instanceof DOMException && e.name === 'SecurityError') {
+        console.error('[ImageSplitter] toDataURL failed due to tainted canvas (CORS). Source likely has no Access-Control-Allow-Origin.', e);
+        throw new Error(
+          '当前故事板图片所在的图床未开启跨域（CORS），浏览器无法对其进行切割。' +
+          '建议在本机下载该图片后上传到素材库/重新生成故事板，或在桌面版中完成切割操作。'
+        );
+      }
+      throw e;
+    }
+
     results.push({
       id: results.length,
       originalIndex: i,
-      dataUrl: cellCanvas.toDataURL('image/png'),
+      dataUrl: cellDataUrl,
       width: outputWidth,
       height: outputHeight,
       isEmpty,

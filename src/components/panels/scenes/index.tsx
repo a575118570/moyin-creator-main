@@ -44,10 +44,10 @@ export function ScenesView() {
   };
 
   return (
-    <div className="h-full">
+    <div className="md:h-full">
       {/* ========== 手机端布局（独立，不影响桌面端） ========== */}
-      {/* 手机端：垂直布局，可滚动 - 仅在 < 768px 显示 */}
-      <div className="md:hidden flex-1 overflow-y-auto">
+      {/* 手机端：垂直布局，滚动交给外层 Layout，避免双层滚动导致"很难滑动" */}
+      <div className="md:hidden flex-1">
         <div className="flex flex-col gap-3 p-2">
           {/* 第一个面板：生成控制台 */}
           <div className="w-full min-h-0 flex-shrink-0">

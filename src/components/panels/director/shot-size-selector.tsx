@@ -31,16 +31,26 @@ export function ShotSizeSelector({
   disabled,
   className,
 }: ShotSizeSelectorProps) {
+  const preset = value ? SHOT_SIZE_PRESETS.find((p) => p.id === value) : null;
   return (
     <Select
       value={value || "none"}
       onValueChange={(v) => onChange(v === "none" ? null : (v as ShotSizeType))}
       disabled={disabled}
     >
-      <SelectTrigger className={`h-7 text-xs ${className || ""}`}>
-        <div className="flex items-center gap-1.5">
+      <SelectTrigger className={`h-7 text-xs min-w-0 max-w-full ${className || ""}`}>
+        <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
           <Camera className="h-3 w-3 text-muted-foreground" />
-          <SelectValue placeholder="景别" />
+          {preset ? (
+            <span className="inline-flex items-center gap-1 min-w-0 max-w-full">
+              <span className="font-mono text-[10px] bg-muted px-1 rounded shrink-0">
+                {preset.abbr}
+              </span>
+              <span className="min-w-0 truncate">{preset.label}</span>
+            </span>
+          ) : (
+            <SelectValue placeholder="景别" />
+          )}
         </div>
       </SelectTrigger>
       <SelectContent>
@@ -48,7 +58,7 @@ export function ShotSizeSelector({
           <span className="text-muted-foreground">未设置</span>
         </SelectItem>
         {SHOT_SIZE_PRESETS.map((preset) => (
-          <SelectItem key={preset.id} value={preset.id}>
+          <SelectItem key={preset.id} value={preset.id} textValue={`${preset.abbr} ${preset.label}`}>
             <div className="flex items-center gap-2">
               <span className="font-mono text-[10px] bg-muted px-1 rounded">
                 {preset.abbr}
@@ -72,9 +82,9 @@ export function ShotSizeLabel({ shotSize }: { shotSize: ShotSizeType | null }) {
   if (!preset) return null;
 
   return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded text-[10px] font-medium">
-      <span className="font-mono">{preset.abbr}</span>
-      <span>{preset.label}</span>
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded text-[10px] font-medium max-w-full min-w-0">
+      <span className="font-mono shrink-0">{preset.abbr}</span>
+      <span className="min-w-0 truncate">{preset.label}</span>
     </span>
   );
 }

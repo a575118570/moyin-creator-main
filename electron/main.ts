@@ -1255,7 +1255,7 @@ function createMenu() {
               type: 'info',
               title: '关于漫果AI',
               message: '漫果AI',
-              detail: 'AI 驱动的动漫/短剧分镜创作工具\n版本 0.1.30'
+              detail: 'AI 驱动的动漫/短剧分镜创作工具\n版本 0.1.31'
             })
           }
         }

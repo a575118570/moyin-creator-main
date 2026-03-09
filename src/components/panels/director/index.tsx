@@ -575,9 +575,9 @@ export function DirectorView() {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="md:h-full flex flex-col">
       {/* Header */}
-      <div className="p-3 pb-2 bg-panel">
+      <div className="p-3 pb-2 bg-panel flex-shrink-0">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-sm">AI 导演</h2>
           <div className="flex items-center gap-2">
@@ -610,8 +610,8 @@ export function DirectorView() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-3 pt-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      {/* Content - allow mobile to use outer layout scroll, desktop keeps inner scroll */}
+      <div className="md:flex-1 md:overflow-y-auto p-3 pt-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {renderContent()}
 
         {/* Step Navigation Footer - 放在内容内部，可以滚动 */}

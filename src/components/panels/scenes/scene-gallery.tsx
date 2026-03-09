@@ -249,7 +249,7 @@ export function SceneGallery({ onSceneSelect, selectedSceneId }: SceneGalleryPro
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="md:h-full flex flex-col">
       {/* Header with breadcrumb and toolbar */}
       <div className="p-3 pb-2 border-b space-y-2">
         {/* Breadcrumb */}

@@ -3120,19 +3120,19 @@ export function SplitScenes({ onBack, onGenerateVideos }: SplitScenesProps) {
 
         {/* Image generation mode toggle */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground whitespace-nowrap">图片生成方式:</span>
+          <span className="text-xs md:text-xs text-muted-foreground whitespace-nowrap">图片生成方式:</span>
           <div className="flex rounded-md border overflow-hidden">
             <button
               onClick={() => setImageGenMode('single')}
               className={cn(
-                "px-3 py-1.5 text-xs",
+                "px-4 py-2 text-sm transition-colors",
                 imageGenMode === 'single' ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'
               )}
             >单图生成</button>
             <button
               onClick={() => setImageGenMode('merged')}
               className={cn(
-                "px-3 py-1.5 text-xs border-l",
+                "px-4 py-2 text-sm border-l transition-colors",
                 imageGenMode === 'merged' ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'
               )}
             >合并生成</button>

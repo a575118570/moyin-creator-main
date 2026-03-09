@@ -24,18 +24,16 @@ async function handleRequest(request) {
   const targetPath = url.pathname.replace('/api/volcano', '')
   const targetUrl = `https://ark.cn-beijing.volces.com${targetPath}${url.search}`
 
-  // 复制请求头（除了 host）
+  // 复制请求头（除了 host 和 CORS 相关头）
   const headers = new Headers()
+  const corsHeaders = ['access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers', 'access-control-request-method', 'access-control-request-headers']
   for (const [key, value] of request.headers.entries()) {
-    if (key.toLowerCase() !== 'host') {
+    const lowerKey = key.toLowerCase()
+    // 排除 host 和 CORS 相关头（这些不应该转发到目标 API）
+    if (lowerKey !== 'host' && !corsHeaders.includes(lowerKey)) {
       headers.set(key, value)
     }
   }
-
-  // 添加 CORS 头
-  headers.set('Access-Control-Allow-Origin', '*')
-  headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-  headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 
   // 处理 OPTIONS 预检请求
   if (request.method === 'OPTIONS') {
@@ -51,6 +49,24 @@ async function handleRequest(request) {
   }
 
   try {
+    // 调试：记录请求信息
+    const authHeader = headers.get('Authorization')
+    const allHeaders = {}
+    for (const [key, value] of headers.entries()) {
+      if (key.toLowerCase() === 'authorization') {
+        allHeaders[key] = value.substring(0, 30) + '...' // 只显示前30个字符
+      } else {
+        allHeaders[key] = value
+      }
+    }
+    console.log('[Worker] Forwarding request:', {
+      method: request.method,
+      targetUrl,
+      hasAuth: !!authHeader,
+      authPrefix: authHeader ? authHeader.substring(0, 30) + '...' : 'none',
+      allHeaders: allHeaders,
+    })
+    
     // 转发请求到目标 API
     const response = await fetch(targetUrl, {
       method: request.method,
