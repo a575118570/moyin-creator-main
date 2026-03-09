@@ -99,13 +99,17 @@ export function EditImageHostDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+      <DialogContent className="max-w-lg h-[85dvh] md:h-auto max-h-[85dvh] md:max-h-[80vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>编辑图床服务商</DialogTitle>
         </DialogHeader>
 
         {/* 内容区：在弹窗内部单独滚动，避免移动端超出屏幕 */}
-        <div className="flex-1 overflow-y-auto pr-1 -mr-1">
+        <div
+          className="flex-1 min-h-0 overflow-y-auto pr-1 -mr-1"
+          data-scrollable
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
           <div className="flex flex-col gap-4 py-4">
           <div className="space-y-2">
             <Label className="text-muted-foreground">平台</Label>

@@ -5,6 +5,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { createProjectScopedStorage } from "@/lib/project-storage";
 import type { ScriptData, Shot, Episode, ScriptScene, ScriptCharacter, EpisodeRawScript, ProjectBackground } from "@/types/script";
+import { useRenderLogStore } from "@/stores/render-log-store";
 
 export type ParseStatus = "idle" | "parsing" | "ready" | "error";
 export type ShotListStatus = "idle" | "generating" | "ready" | "error";
@@ -254,8 +255,9 @@ export const useScriptStore = create<ScriptStore>()(
 
       updateShot: (projectId, shotId, updates) => {
         get().ensureProject(projectId);
-        set((state) => ({
-          projects: {
+        set((state) => {
+          const prevShot = state.projects[projectId]?.shots.find((s) => s.id === shotId);
+          const nextProjects = {
             ...state.projects,
             [projectId]: {
               ...state.projects[projectId],
@@ -264,8 +266,64 @@ export const useScriptStore = create<ScriptStore>()(
               ),
               updatedAt: Date.now(),
             },
-          },
-        }));
+          };
+
+          if (prevShot) {
+            // Log only on status transitions / error changes (avoid spamming progress updates)
+            if (updates.imageStatus && updates.imageStatus !== prevShot.imageStatus) {
+              useRenderLogStore.getState().append(projectId, {
+                level: updates.imageStatus === "completed" ? "success" : updates.imageStatus === "failed" ? "error" : "info",
+                source: "script",
+                kind: "image",
+                entityId: shotId,
+                label: `分镜 ${String(prevShot.index).padStart(3, "0")}`,
+                status: updates.imageStatus,
+                message: `图片${updates.imageStatus === "generating" ? "生成中" : updates.imageStatus === "completed" ? "已完成" : updates.imageStatus === "failed" ? "失败" : "待生成"}`,
+                error: (updates as any).imageError,
+                url: (updates as any).imageUrl,
+              });
+            }
+            if (updates.videoStatus && updates.videoStatus !== prevShot.videoStatus) {
+              useRenderLogStore.getState().append(projectId, {
+                level: updates.videoStatus === "completed" ? "success" : updates.videoStatus === "failed" ? "error" : "info",
+                source: "script",
+                kind: "video",
+                entityId: shotId,
+                label: `分镜 ${String(prevShot.index).padStart(3, "0")}`,
+                status: updates.videoStatus,
+                message: `视频${updates.videoStatus === "generating" ? "生成中" : updates.videoStatus === "completed" ? "已完成" : updates.videoStatus === "failed" ? "失败" : "待生成"}`,
+                error: (updates as any).videoError,
+                url: (updates as any).videoUrl,
+              });
+            }
+            if ((updates as any).imageError && (updates as any).imageError !== (prevShot as any).imageError) {
+              useRenderLogStore.getState().append(projectId, {
+                level: "error",
+                source: "script",
+                kind: "image",
+                entityId: shotId,
+                label: `分镜 ${String(prevShot.index).padStart(3, "0")}`,
+                status: String((updates as any).imageStatus ?? prevShot.imageStatus),
+                message: "图片错误更新",
+                error: (updates as any).imageError,
+              });
+            }
+            if ((updates as any).videoError && (updates as any).videoError !== (prevShot as any).videoError) {
+              useRenderLogStore.getState().append(projectId, {
+                level: "error",
+                source: "script",
+                kind: "video",
+                entityId: shotId,
+                label: `分镜 ${String(prevShot.index).padStart(3, "0")}`,
+                status: String((updates as any).videoStatus ?? prevShot.videoStatus),
+                message: "视频错误更新",
+                error: (updates as any).videoError,
+              });
+            }
+          }
+
+          return { projects: nextProjects };
+        });
       },
 
       setShotStatus: (projectId, status, error) => {

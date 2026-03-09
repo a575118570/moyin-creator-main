@@ -195,7 +195,7 @@ export function ScriptInput({
   };
 
   return (
-    <div className="h-full flex flex-col p-3 md:p-3 space-y-3">
+    <div className="md:h-full flex flex-col p-3 md:p-3 space-y-3">
       {/* 模式切换 */}
       <Tabs value={mode} onValueChange={(v) => setMode(v as "import" | "create")}>
         <TabsList className="grid w-full grid-cols-2">
@@ -219,7 +219,7 @@ export function ScriptInput({
               placeholder="支持的格式：\n• 第X集（集标记）\n• **1-1日 内 地点**（场景头）\n• 人物：角色A、角色B\n• 角色名：（动作）台词\n• △动作描写\n• 【字幕】【闪回】等"
               value={rawScript}
               onChange={(e) => onRawScriptChange(e.target.value)}
-              className="min-h-[260px] md:min-h-[320px] resize-none text-sm"
+              className="!h-[22dvh] !min-h-[200px] md:!h-auto md:!min-h-[520px] resize-none text-sm"
               disabled={parseStatus === "parsing" || isImporting}
             />
             {/* 导入状态提示 */}
@@ -394,7 +394,7 @@ export function ScriptInput({
                 placeholder="例如：一个内向程序员在咖啡店邂逅开朗女孩的温暖故事..."
                 value={idea}
                 onChange={(e) => setIdea(e.target.value)}
-                className="min-h-[100px] resize-none text-sm"
+                className="!h-[22dvh] !min-h-[200px] md:!h-auto md:!min-h-[520px] resize-none text-sm"
                 disabled={isGenerating}
               />
             </div>
@@ -426,7 +426,7 @@ export function ScriptInput({
                 <Textarea
                   value={rawScript}
                   onChange={(e) => onRawScriptChange(e.target.value)}
-                  className="min-h-[100px] resize-none text-sm"
+                  className="!h-[22dvh] !min-h-[200px] md:!h-auto md:!min-h-[520px] resize-none text-sm"
                   disabled={parseStatus === "parsing"}
                 />
               </div>

@@ -153,90 +153,97 @@ export function AddImageHostDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg h-[85dvh] md:h-auto max-h-[85dvh] md:max-h-[80vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>添加图床服务商</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4 py-4">
-          <div className="space-y-2">
-            <Label>平台</Label>
-            <Select value={platform} onValueChange={(v) => setPlatform(v as ImageHostPlatform)}>
-              <SelectTrigger>
-                <SelectValue placeholder="选择平台" />
-              </SelectTrigger>
-              <SelectContent>
-                {IMAGE_HOST_PRESETS.map((preset) => (
-                  <SelectItem key={preset.platform} value={preset.platform}>
-                    {preset.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>名称</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="图床名称" />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Base URL</Label>
-            <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.example.com" />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Upload Path / URL</Label>
-            <Input value={uploadPath} onChange={(e) => setUploadPath(e.target.value)} placeholder="/upload 或完整 URL" />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>API Keys</Label>
+        {/* 内容区：在弹窗内部单独滚动，避免移动端超出屏幕 */}
+        <div
+          className="flex-1 min-h-0 overflow-y-auto pr-1 -mr-1"
+          data-scrollable
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          <div className="flex flex-col gap-4 py-4">
+            <div className="space-y-2">
+              <Label>平台</Label>
+              <Select value={platform} onValueChange={(v) => setPlatform(v as ImageHostPlatform)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="选择平台" />
+                </SelectTrigger>
+                <SelectContent>
+                  {IMAGE_HOST_PRESETS.map((preset) => (
+                    <SelectItem key={preset.platform} value={preset.platform}>
+                      {preset.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Textarea
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="输入 API Keys（每行一个，或用逗号分隔）"
-              className="font-mono text-sm min-h-[80px]"
-            />
-          </div>
 
-          <div className="flex items-center justify-between">
-            <Label>启用</Label>
-            <Switch checked={enabled} onCheckedChange={setEnabled} />
-          </div>
+            <div className="space-y-2">
+              <Label>名称</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="图床名称" />
+            </div>
 
-          <div className="space-y-2">
-            <Label className="text-sm text-muted-foreground">高级配置（可选）</Label>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">API Key Query 参数</Label>
-                <Input value={apiKeyParam} onChange={(e) => setApiKeyParam(e.target.value)} placeholder="key" />
+            <div className="space-y-2">
+              <Label>Base URL</Label>
+              <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.example.com" />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Upload Path / URL</Label>
+              <Input value={uploadPath} onChange={(e) => setUploadPath(e.target.value)} placeholder="/upload 或完整 URL" />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>API Keys</Label>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">API Key Header</Label>
-                <Input value={apiKeyHeader} onChange={(e) => setApiKeyHeader(e.target.value)} placeholder="Authorization" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">过期参数</Label>
-                <Input value={expirationParam} onChange={(e) => setExpirationParam(e.target.value)} placeholder="expiration" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">图片字段名</Label>
-                <Input value={imageField} onChange={(e) => setImageField(e.target.value)} placeholder="image" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">名称字段名</Label>
-                <Input value={nameField} onChange={(e) => setNameField(e.target.value)} placeholder="name" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">返回 URL 字段</Label>
-                <Input value={responseUrlField} onChange={(e) => setResponseUrlField(e.target.value)} placeholder="data.url" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">删除 URL 字段</Label>
-                <Input value={responseDeleteUrlField} onChange={(e) => setResponseDeleteUrlField(e.target.value)} placeholder="data.delete_url" />
+              <Textarea
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="输入 API Keys（每行一个，或用逗号分隔）"
+                className="font-mono text-sm min-h-[80px]"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label>启用</Label>
+              <Switch checked={enabled} onCheckedChange={setEnabled} />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">高级配置（可选）</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">API Key Query 参数</Label>
+                  <Input value={apiKeyParam} onChange={(e) => setApiKeyParam(e.target.value)} placeholder="key" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">API Key Header</Label>
+                  <Input value={apiKeyHeader} onChange={(e) => setApiKeyHeader(e.target.value)} placeholder="Authorization" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">过期参数</Label>
+                  <Input value={expirationParam} onChange={(e) => setExpirationParam(e.target.value)} placeholder="expiration" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">图片字段名</Label>
+                  <Input value={imageField} onChange={(e) => setImageField(e.target.value)} placeholder="image" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">名称字段名</Label>
+                  <Input value={nameField} onChange={(e) => setNameField(e.target.value)} placeholder="name" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">返回 URL 字段</Label>
+                  <Input value={responseUrlField} onChange={(e) => setResponseUrlField(e.target.value)} placeholder="data.url" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">删除 URL 字段</Label>
+                  <Input value={responseDeleteUrlField} onChange={(e) => setResponseDeleteUrlField(e.target.value)} placeholder="data.delete_url" />
+                </div>
               </div>
             </div>
           </div>

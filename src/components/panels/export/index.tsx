@@ -11,6 +11,7 @@
 import { useScriptStore, useActiveScriptProject } from "@/stores/script-store";
 import { useActiveDirectorProject } from "@/stores/director-store";
 import { useProjectStore } from "@/stores/project-store";
+import { useMediaPanelStore } from "@/stores/media-panel-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,11 +26,19 @@ import {
   Clapperboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { copyToClipboard } from "@/lib/clipboard";
+import { exportProjectFiles } from "@/lib/script/export-service";
+import { exportSplitScenesFiles } from "@/lib/director/export-service";
+import { RenderLogDialog } from "@/components/render-log/RenderLogDialog";
+import { useState } from "react";
 
 export function ExportView() {
   const { activeProject } = useProjectStore();
   const scriptProject = useActiveScriptProject();
   const directorProject = useActiveDirectorProject();
+  const { setActiveTab } = useMediaPanelStore();
+  const [renderLogOpen, setRenderLogOpen] = useState(false);
 
   const shots = scriptProject?.shots || [];
   const splitScenes = directorProject?.splitScenes || [];
@@ -52,6 +61,42 @@ export function ExportView() {
   const imageReadyItems = hasSplitScenes ? directorWithImage : scriptCompleted;
   const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
   const imageProgress = totalItems > 0 ? Math.round((imageReadyItems / totalItems) * 100) : 0;
+
+  const bestVideoUrl =
+    splitScenes.find((s) => s.videoStatus === "completed" && !!s.videoUrl)?.videoUrl ||
+    shots.find((s) => !!s.videoUrl)?.videoUrl ||
+    null;
+
+  const handleExportMaterials = async () => {
+    const projectName = activeProject?.name || scriptData?.title || "未命名项目";
+    toast.loading("正在导出素材包...", { id: "export-materials" });
+    try {
+      if (hasSplitScenes && splitScenes.length > 0) {
+        await exportSplitScenesFiles({
+          projectName,
+          splitScenes,
+          includeImages: true,
+          includeVideos: true,
+        });
+      } else if (scriptProject?.scriptData && shots.length > 0) {
+        await exportProjectFiles({
+          projectName,
+          scriptData: scriptProject.scriptData,
+          shots,
+          targetDuration,
+          includeImages: true,
+          includeVideos: true,
+          format: "folder",
+        });
+      } else {
+        toast.error("没有可导出的素材", { id: "export-materials" });
+        return;
+      }
+      toast.success("已开始下载素材包（包含 manifest.json）", { id: "export-materials" });
+    } catch (e: any) {
+      toast.error(`导出失败：${e?.message || "未知错误"}`, { id: "export-materials" });
+    }
+  };
 
   // 估算时长：使用实际时长数据
   const estimatedDuration = hasSplitScenes
@@ -82,6 +127,11 @@ export function ExportView() {
       <ScrollArea className="md:flex-1">
         <div className="p-8 md:p-12">
           <div className="max-w-6xl mx-auto space-y-8">
+            <RenderLogDialog
+              open={renderLogOpen}
+              onOpenChange={setRenderLogOpen}
+              projectId={activeProject?.id}
+            />
             {/* Main Status Panel */}
             <div className="bg-card border border-border rounded-xl p-8 shadow-2xl relative overflow-hidden">
               {/* Background Decoration */}
@@ -225,6 +275,10 @@ export function ExportView() {
                       ? "bg-primary text-primary-foreground hover:bg-primary/90"
                       : "bg-muted text-muted-foreground cursor-not-allowed"
                   )}
+                  onClick={() => {
+                    toast.info("当前 Web 端暂不支持把所有分镜合成为单个成片 MP4，将为你导出素材包（可用于剪映/PR 合成）。");
+                    void handleExportMaterials();
+                  }}
                 >
                   <Download className="w-4 h-4 mr-2" />
                   下载成片 (.mp4)
@@ -233,6 +287,10 @@ export function ExportView() {
                 <Button
                   variant="outline"
                   className="h-12 font-bold text-xs uppercase tracking-widest"
+                  onClick={() => {
+                    toast.info("当前仅支持导出素材包（manifest.json + 图片/视频）。EDL/XML 导出后续补齐。");
+                    void handleExportMaterials();
+                  }}
                 >
                   <FileVideo className="w-4 h-4 mr-2" />
                   导出 EDL / XML
@@ -242,7 +300,15 @@ export function ExportView() {
 
             {/* Secondary Options */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="p-5 bg-card border border-border rounded-xl hover:border-primary/50 transition-colors group cursor-pointer flex flex-col justify-between h-32">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("media");
+                  toast.info("已切换到「素材」页");
+                }}
+                className="p-5 bg-card border border-border rounded-xl hover:border-primary/50 transition-colors group cursor-pointer flex flex-col justify-between h-32 text-left"
+                aria-label="打开源素材（跳转到素材页）"
+              >
                 <Layers className="w-5 h-5 text-muted-foreground group-hover:text-primary mb-4 transition-colors" />
                 <div>
                   <h4 className="text-sm font-bold text-foreground mb-1">源素材</h4>
@@ -250,8 +316,66 @@ export function ExportView() {
                     下载所有生成的图片和原始视频片段。
                   </p>
                 </div>
-              </div>
-              <div className="p-5 bg-card border border-border rounded-xl hover:border-primary/50 transition-colors group cursor-pointer flex flex-col justify-between h-32">
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window === "undefined") return;
+
+                  // 期望：分享“成片”。但当前 Web 端暂无合成成片能力。
+                  // 若存在单个可用视频，则分享该视频链接；否则退化为分享项目链接。
+                  const shareVideo = async (videoUrl: string) => {
+                    const navAny = navigator as any;
+                    const title = `${activeProject?.name || "项目"}（视频片段）`;
+                    const text = "视频链接";
+                    if (navAny?.share) {
+                      await navAny.share({ title, text, url: videoUrl });
+                      return;
+                    }
+                    const ok = await copyToClipboard(videoUrl);
+                    if (ok) toast.success("视频链接已复制");
+                    else toast.error("复制失败，请手动复制视频链接");
+                  };
+
+                  const shareProjectLink = async () => {
+                    if (!activeProject?.id) {
+                      toast.error("未找到当前项目，无法分享");
+                      return;
+                    }
+                    const url = new URL(window.location.href);
+                    url.searchParams.set("projectId", activeProject.id);
+                    url.searchParams.set("tab", "export");
+                    const shareUrl = url.toString();
+                    const navAny = navigator as any;
+                    const title = `${activeProject.name || "项目"}（漫果AI）`;
+                    const text = "打开项目（需要对方已导入/同步该项目数据）";
+                    if (navAny?.share) {
+                      await navAny.share({ title, text, url: shareUrl });
+                      return;
+                    }
+                    const ok = await copyToClipboard(shareUrl);
+                    if (ok) toast.success("项目链接已复制");
+                    else toast.error("复制失败，请手动复制地址栏链接");
+                  };
+
+                  (async () => {
+                    try {
+                      if (bestVideoUrl) {
+                        toast.info("当前未合成单个成片 MP4，将先分享一个可用的视频片段链接。若需成片，请导出素材后在剪辑软件合成。");
+                        await shareVideo(bestVideoUrl);
+                      } else {
+                        toast.info("暂无可分享的视频片段，先分享项目链接。");
+                        await shareProjectLink();
+                      }
+                    } catch (e: any) {
+                      if (String(e?.name) === "AbortError") return;
+                      toast.error("分享失败");
+                    }
+                  })();
+                }}
+                className="p-5 bg-card border border-border rounded-xl hover:border-primary/50 transition-colors group cursor-pointer flex flex-col justify-between h-32 text-left"
+                aria-label="分享项目"
+              >
                 <Share2 className="w-5 h-5 text-muted-foreground group-hover:text-primary mb-4 transition-colors" />
                 <div>
                   <h4 className="text-sm font-bold text-foreground mb-1">分享项目</h4>
@@ -259,8 +383,15 @@ export function ExportView() {
                     创建仅供查看的链接供客户审阅。
                   </p>
                 </div>
-              </div>
-              <div className="p-5 bg-card border border-border rounded-xl hover:border-primary/50 transition-colors group cursor-pointer flex flex-col justify-between h-32">
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRenderLogOpen(true);
+                }}
+                className="p-5 bg-card border border-border rounded-xl hover:border-primary/50 transition-colors group cursor-pointer flex flex-col justify-between h-32 text-left"
+                aria-label="查看渲染日志"
+              >
                 <Clock className="w-5 h-5 text-muted-foreground group-hover:text-primary mb-4 transition-colors" />
                 <div>
                   <h4 className="text-sm font-bold text-foreground mb-1">渲染日志</h4>
@@ -268,7 +399,7 @@ export function ExportView() {
                     查看生成历史和令牌使用情况。
                   </p>
                 </div>
-              </div>
+              </button>
             </div>
           </div>
         </div>

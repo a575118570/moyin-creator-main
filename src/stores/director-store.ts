@@ -10,6 +10,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { createProjectScopedStorage } from '@/lib/project-storage';
 import { DEFAULT_CINEMATOGRAPHY_PROFILE_ID } from '@/lib/constants/cinematography-profiles';
+import { useRenderLogStore } from '@/stores/render-log-store';
 import type { 
   AIScreenplay, 
   AIScene, 
@@ -44,6 +45,28 @@ export type StoryboardStatus = 'idle' | 'generating' | 'preview' | 'splitting' |
 export type GenerationStatus = 'idle' | 'uploading' | 'generating' | 'completed' | 'failed';
 // Alias for backward compatibility
 export type VideoStatus = GenerationStatus;
+
+function levelFromGenStatus(status: GenerationStatus | undefined) {
+  if (status === 'completed') return 'success' as const;
+  if (status === 'failed') return 'error' as const;
+  return 'info' as const;
+}
+
+function genStatusText(status: GenerationStatus | undefined) {
+  switch (status) {
+    case 'uploading':
+      return '上传中';
+    case 'generating':
+      return '生成中';
+    case 'completed':
+      return '已完成';
+    case 'failed':
+      return '失败';
+    case 'idle':
+    default:
+      return '待生成';
+  }
+}
 
 // ==================== 预设常量（从 director-presets.ts 导入并重新导出） ====================
 // 本地导入：用于本文件内的类型引用（SplitScene 等接口定义需要）
@@ -1018,6 +1041,7 @@ export const useDirectorStore = create<DirectorStore>()(
     const { activeProjectId, projects } = get();
     if (!activeProjectId) return;
     const project = projects[activeProjectId];
+    const prevScene = project.splitScenes.find((s) => s.id === sceneId);
     const updated = project.splitScenes.map(scene =>
       scene.id === sceneId ? { 
         ...scene, 
@@ -1040,12 +1064,27 @@ export const useDirectorStore = create<DirectorStore>()(
         [activeProjectId]: { ...project, splitScenes: updated },
       },
     });
+
+    if (prevScene && prevScene.imageStatus !== 'completed') {
+      useRenderLogStore.getState().append(activeProjectId, {
+        level: 'success',
+        source: 'director',
+        kind: 'image',
+        entityId: String(sceneId),
+        label: `分镜 ${String(sceneId + 1).padStart(3, '0')} ${prevScene.sceneName || ''}`.trim(),
+        status: 'completed',
+        message: '首帧图片已完成',
+        url: httpUrl || undefined,
+      });
+    }
   },
 
   updateSplitSceneImageStatus: (sceneId, updates) => {
     const { activeProjectId, projects } = get();
     if (!activeProjectId) return;
     const project = projects[activeProjectId];
+    const prevScene = project.splitScenes.find((s) => s.id === sceneId);
+    const prevStatus = prevScene?.imageStatus;
     const updated = project.splitScenes.map(scene =>
       scene.id === sceneId ? { ...scene, ...updates } : scene
     );
@@ -1055,12 +1094,40 @@ export const useDirectorStore = create<DirectorStore>()(
         [activeProjectId]: { ...project, splitScenes: updated },
       },
     });
+
+    const nextStatus = (updates.imageStatus ?? prevStatus) as GenerationStatus | undefined;
+    if (prevScene && updates.imageStatus && updates.imageStatus !== prevStatus) {
+      useRenderLogStore.getState().append(activeProjectId, {
+        level: levelFromGenStatus(nextStatus),
+        source: 'director',
+        kind: 'image',
+        entityId: String(sceneId),
+        label: `分镜 ${String(sceneId + 1).padStart(3, '0')} ${prevScene.sceneName || ''}`.trim(),
+        status: updates.imageStatus,
+        message: `首帧图片${genStatusText(nextStatus)}`,
+        error: updates.imageError || undefined,
+      });
+    } else if (prevScene && updates.imageError && updates.imageError !== prevScene.imageError) {
+      useRenderLogStore.getState().append(activeProjectId, {
+        level: 'error',
+        source: 'director',
+        kind: 'image',
+        entityId: String(sceneId),
+        label: `分镜 ${String(sceneId + 1).padStart(3, '0')} ${prevScene.sceneName || ''}`.trim(),
+        status: String(nextStatus ?? ''),
+        message: '首帧图片错误更新',
+        error: updates.imageError,
+      });
+    }
   },
 
   updateSplitSceneVideo: (sceneId, updates) => {
     const { activeProjectId, projects } = get();
     if (!activeProjectId) return;
     const project = projects[activeProjectId];
+    const prevScene = project.splitScenes.find((s) => s.id === sceneId);
+    const prevStatus = prevScene?.videoStatus;
+    const prevUrl = prevScene?.videoUrl;
     const updated = project.splitScenes.map(scene =>
       scene.id === sceneId ? { ...scene, ...updates } : scene
     );
@@ -1070,6 +1137,43 @@ export const useDirectorStore = create<DirectorStore>()(
         [activeProjectId]: { ...project, splitScenes: updated },
       },
     });
+
+    const nextStatus = (updates.videoStatus ?? prevStatus) as GenerationStatus | undefined;
+    if (prevScene && updates.videoStatus && updates.videoStatus !== prevStatus) {
+      useRenderLogStore.getState().append(activeProjectId, {
+        level: levelFromGenStatus(nextStatus),
+        source: 'director',
+        kind: 'video',
+        entityId: String(sceneId),
+        label: `分镜 ${String(sceneId + 1).padStart(3, '0')} ${prevScene.sceneName || ''}`.trim(),
+        status: updates.videoStatus,
+        message: `视频${genStatusText(nextStatus)}`,
+        error: updates.videoError || undefined,
+        url: updates.videoUrl || undefined,
+      });
+    } else if (prevScene && updates.videoUrl && updates.videoUrl !== prevUrl) {
+      useRenderLogStore.getState().append(activeProjectId, {
+        level: 'success',
+        source: 'director',
+        kind: 'video',
+        entityId: String(sceneId),
+        label: `分镜 ${String(sceneId + 1).padStart(3, '0')} ${prevScene.sceneName || ''}`.trim(),
+        status: String(nextStatus ?? ''),
+        message: '视频链接已更新',
+        url: updates.videoUrl,
+      });
+    } else if (prevScene && updates.videoError && updates.videoError !== prevScene.videoError) {
+      useRenderLogStore.getState().append(activeProjectId, {
+        level: 'error',
+        source: 'director',
+        kind: 'video',
+        entityId: String(sceneId),
+        label: `分镜 ${String(sceneId + 1).padStart(3, '0')} ${prevScene.sceneName || ''}`.trim(),
+        status: String(nextStatus ?? ''),
+        message: '视频错误更新',
+        error: updates.videoError,
+      });
+    }
   },
 
   // 更新尾帧图片（支持多种来源）
@@ -1103,6 +1207,8 @@ export const useDirectorStore = create<DirectorStore>()(
     const { activeProjectId, projects } = get();
     if (!activeProjectId) return;
     const project = projects[activeProjectId];
+    const prevScene = project.splitScenes.find((s) => s.id === sceneId);
+    const prevStatus = prevScene?.endFrameStatus;
     const updated = project.splitScenes.map(scene =>
       scene.id === sceneId ? { ...scene, ...updates } : scene
     );
@@ -1112,6 +1218,31 @@ export const useDirectorStore = create<DirectorStore>()(
         [activeProjectId]: { ...project, splitScenes: updated },
       },
     });
+
+    const nextStatus = (updates.endFrameStatus ?? prevStatus) as GenerationStatus | undefined;
+    if (prevScene && updates.endFrameStatus && updates.endFrameStatus !== prevStatus) {
+      useRenderLogStore.getState().append(activeProjectId, {
+        level: levelFromGenStatus(nextStatus),
+        source: 'director',
+        kind: 'endFrame',
+        entityId: String(sceneId),
+        label: `分镜 ${String(sceneId + 1).padStart(3, '0')} ${prevScene.sceneName || ''}`.trim(),
+        status: updates.endFrameStatus,
+        message: `尾帧${genStatusText(nextStatus)}`,
+        error: updates.endFrameError || undefined,
+      });
+    } else if (prevScene && updates.endFrameError && updates.endFrameError !== prevScene.endFrameError) {
+      useRenderLogStore.getState().append(activeProjectId, {
+        level: 'error',
+        source: 'director',
+        kind: 'endFrame',
+        entityId: String(sceneId),
+        label: `分镜 ${String(sceneId + 1).padStart(3, '0')} ${prevScene.sceneName || ''}`.trim(),
+        status: String(nextStatus ?? ''),
+        message: '尾帧错误更新',
+        error: updates.endFrameError,
+      });
+    }
   },
 
   updateSplitSceneCharacters: (sceneId, characterIds) => {

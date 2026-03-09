@@ -12,6 +12,9 @@ import { migrateToProjectStorage, recoverFromLegacy } from "@/lib/storage-migrat
 import { LicenseGate } from "@/components/LicenseGate";
 import { useLicenseStore } from "@/stores/license-store";
 import { formatRemaining, useTrialStore } from "@/stores/trial-store";
+import { toast } from "sonner";
+import { useProjectStore } from "@/stores/project-store";
+import { useMediaPanelStore } from "@/stores/media-panel-store";
 
 function App() {
   const { theme } = useThemeStore();
@@ -55,6 +58,52 @@ function App() {
       setTrialBanner(s.reason);
     }
   }, [isMigrating, initTrial]);
+
+  // 解析分享链接：?projectId=...&tab=...
+  useEffect(() => {
+    if (isMigrating) return;
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const projectId = params.get("projectId");
+    const tab = params.get("tab");
+
+    if (!projectId && !tab) return;
+
+    // 1) 切换项目（若本地存在）
+    if (projectId) {
+      const { projects, setActiveProject } = useProjectStore.getState();
+      const exists = projects.some((p) => p.id === projectId);
+      if (exists) {
+        setActiveProject(projectId);
+      } else {
+        toast.error("该分享链接对应的项目不在本机，请先导入/同步项目数据后再打开。");
+      }
+    }
+
+    // 2) 切换到指定页面（安全白名单）
+    if (tab) {
+      const allowed = new Set([
+        "dashboard",
+        "script",
+        "characters",
+        "scenes",
+        "freedom",
+        "director",
+        "sclass",
+        "media",
+        "export",
+        "settings",
+        "help",
+      ]);
+      if (allowed.has(tab)) {
+        useMediaPanelStore.getState().setActiveTab(tab as any);
+      }
+    } else if (projectId) {
+      // 没指定 tab，但指定了 projectId：默认进入项目（剧本页）
+      useMediaPanelStore.getState().setActiveTab("script");
+    }
+  }, [isMigrating]);
 
   // 启动时自动同步所有已配置 API Key 的供应商模型元数据
   useEffect(() => {
