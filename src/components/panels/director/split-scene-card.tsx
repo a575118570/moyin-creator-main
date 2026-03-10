@@ -283,24 +283,27 @@ export function SplitSceneCard({
     }
   };
 
-  // 下载视频
-  const handleDownloadVideo = async (videoUrl: string, filename: string) => {
+  // 下载视频（避免 fetch 引起的 CORS 问题，直接用 <a download>）
+  const handleDownloadVideo = (videoUrl: string, filename: string) => {
     try {
-      const res = await fetch(videoUrl);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
+      if (!videoUrl) {
+        toast.error("没有可下载的视频");
+        return;
+      }
+
+      const link = document.createElement("a");
+      link.href = videoUrl;
       link.download = filename;
+      // iOS / 部分安卓可能忽略 download 属性，但会在新标签打开，再手动保存
+      link.target = "_blank";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast.success(`${filename} 下载完成`);
+
+      toast.success(`${filename} 开始下载（或在新页面中打开）`);
     } catch (err) {
-      console.error('Video download failed:', err);
-      toast.error('视频下载失败');
+      console.error("Video download failed:", err);
+      toast.error("视频下载失败");
     }
   };
 

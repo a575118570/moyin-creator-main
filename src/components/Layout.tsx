@@ -118,41 +118,54 @@ export function Layout() {
           <ProjectHeader />
         </div>
         
-        {/* Mobile: Single column layout with preview and properties panels in scrollable content */}
-        <div className="md:hidden flex-1 min-h-0 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }} data-scrollable>
+        {/* Mobile: 单列布局。时间线不固定，作为内容出现在底部（手机端默认折叠，避免占屏/遮挡）。 */}
+        <div className="md:hidden flex-1 min-h-0 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch" }} data-scrollable>
           <div className="flex flex-col bg-panel min-h-0">
-            {/* Left Panel Content */}
-            <div className="min-h-0 flex-shrink-0">
-              {renderLeftPanel()}
-            </div>
-            {/* Preview Panel - as part of scrollable content, not fixed - only show when there's content */}
-            {/* For media tab, only show preview if there's actually a preview item */}
-            {(activeTab === "director" || activeTab === "sclass" || (activeTab === "media" && previewItem)) && previewItem && (
-              <div className="flex-shrink-0 border-t border-border">
-                <div className="h-[40vh] min-h-[200px] max-h-[400px]">
-                  <PreviewPanel />
-                </div>
+              {/* Left Panel Content */}
+              <div className="min-h-0 flex-shrink-0">
+                {renderLeftPanel()}
               </div>
-            )}
-            {/* Properties Panel - as part of scrollable content, not fixed - smaller height when no script data */}
-            {/* Show properties panel for director, sclass, and media tabs */}
-            {(activeTab === "director" || activeTab === "sclass" || activeTab === "media") && (
-              <div className="flex-shrink-0 border-t border-border">
-                <div className={activeTab === "media" ? "min-h-[150px] max-h-[200px]" : (hasScriptData ? "min-h-[200px] max-h-[300px]" : "min-h-[100px] max-h-[200px]")}>
-                  {renderRightPanel()}
+              {/* Preview Panel - as part of scrollable content, not fixed - only show when there's content */}
+              {/* For media tab, only show preview if there's actually a preview item */}
+              {(activeTab === "director" ||
+                activeTab === "sclass" ||
+                (activeTab === "media" && previewItem)) &&
+                previewItem && (
+                  <div className="flex-shrink-0 border-t border-border">
+                    <div className="h-[40vh] min-h-[200px] max-h-[400px]">
+                      <PreviewPanel />
+                    </div>
+                  </div>
+                )}
+              {/* Properties Panel - as part of scrollable content, not fixed - smaller height when no script data */}
+              {/* Show properties panel for director, sclass, and media tabs */}
+              {(activeTab === "director" ||
+                activeTab === "sclass" ||
+                activeTab === "media") && (
+                <div className="flex-shrink-0 border-t border-border">
+                  <div
+                    className={
+                      activeTab === "media"
+                        ? "min-h-[150px] max-h-[200px]"
+                        : hasScriptData
+                          ? "min-h-[200px] max-h-[300px]"
+                          : "min-h-[100px] max-h-[200px]"
+                    }
+                  >
+                    {renderRightPanel()}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Mobile Timeline (director/sclass/media only) - 作为普通内容出现在底部，不固定在屏幕中间，避免遮挡分镜列表 */}
-            {showTimeline && (
-              <div className="flex-shrink-0 border-t border-border bg-panel">
-                <div className="h-[160px]">
-                  <SimpleTimeline />
+              {/* Mobile Timeline：放在内容流最后，不固定，不遮挡点击 */}
+              {showTimeline && (
+                <div className="flex-shrink-0 border-t border-border bg-panel pb-[env(safe-area-inset-bottom)]">
+                  <div className="h-[160px]">
+                    <SimpleTimeline />
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
         </div>
 
         {/* Desktop: Main content with resizable panels */}

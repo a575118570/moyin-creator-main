@@ -6,7 +6,7 @@
  * Single-track timeline for arranging and playing video clips
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   useSimpleTimelineStore,
   type TimelineClip,
@@ -48,6 +48,13 @@ export function SimpleTimeline() {
   });
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { setPreviewItem, pause: pausePreview, stop: stopPreview, isPlaying: isPreviewPlaying, setPlaylist, currentIndex, playlist } = usePreviewStore();
+
+  // 手机端默认折叠，避免时间线占屏/影响操作（用户可手动展开）
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isMobile = window.matchMedia?.("(max-width: 768px)")?.matches ?? false;
+    if (isMobile) setIsCollapsed(true);
+  }, []);
 
   // Handle clip click for preview
   const handleClipClick = useCallback((clip: TimelineClip, e: React.MouseEvent) => {

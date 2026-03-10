@@ -67,6 +67,50 @@ export function ExportView() {
     shots.find((s) => !!s.videoUrl)?.videoUrl ||
     null;
 
+  const triggerDownload = (url: string, filename: string) => {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    // iOS / 部分安卓可能忽略 download，fallback 为新标签打开后手动保存
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadSplitSceneVideos = async () => {
+    if (!hasSplitScenes || splitScenes.length === 0) {
+      toast.error("当前没有分镜视频可下载");
+      return;
+    }
+
+    const videos = splitScenes
+      .map((s, idx) => ({ idx, url: s.videoUrl, ok: s.videoStatus === "completed" && !!s.videoUrl }))
+      .filter((v) => v.ok && !!v.url) as Array<{ idx: number; url: string; ok: true }>;
+
+    if (videos.length === 0) {
+      toast.error("还没有已生成完成的视频");
+      return;
+    }
+
+    toast.loading(`开始下载 ${videos.length} 个分镜视频...`, { id: "download-scene-videos" });
+
+    // 逐个触发下载，避免浏览器一次性拦截太多下载
+    for (const v of videos) {
+      const filename = `scene-${String(v.idx + 1).padStart(2, "0")}.mp4`;
+      try {
+        triggerDownload(v.url, filename);
+        // 小延迟：给移动端浏览器留出处理时间
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((r) => setTimeout(r, 350));
+      } catch (e) {
+        // continue
+      }
+    }
+
+    toast.success("已触发下载（若系统拦截多文件下载，请在浏览器设置里允许）", { id: "download-scene-videos" });
+  };
+
   const handleExportMaterials = async () => {
     const projectName = activeProject?.name || scriptData?.title || "未命名项目";
     toast.loading("正在导出素材包...", { id: "export-materials" });
@@ -268,32 +312,32 @@ export function ExportView() {
               {/* Action Buttons */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Button
-                  disabled={progress < 100}
+                  disabled={!hasSplitScenes || splitScenes.length === 0}
                   className={cn(
                     "h-12 font-bold text-xs uppercase tracking-widest transition-all",
-                    progress === 100
+                    (hasSplitScenes && splitScenes.length > 0)
                       ? "bg-primary text-primary-foreground hover:bg-primary/90"
                       : "bg-muted text-muted-foreground cursor-not-allowed"
                   )}
                   onClick={() => {
-                    toast.info("将导出素材包：包含所有分镜生成的视频和图片，可在剪映 / PR 中自行合成成片。");
-                    void handleExportMaterials();
+                    toast.info("将逐个下载已生成完成的分镜视频（多个 .mp4）。");
+                    void handleDownloadSplitSceneVideos();
                   }}
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  下载所有分镜视频（素材包）
+                  下载所有分镜视频（逐个 .mp4）
                 </Button>
 
                 <Button
                   variant="outline"
                   className="h-12 font-bold text-xs uppercase tracking-widest"
                   onClick={() => {
-                    toast.info("当前仅支持导出素材包（manifest.json + 图片/视频）。EDL/XML 导出后续补齐。");
+                    toast.info("将导出素材包（zip）：包含 manifest.json + 图片/视频，适合导入剪映 / PR。");
                     void handleExportMaterials();
                   }}
                 >
                   <FileVideo className="w-4 h-4 mr-2" />
-                  导出 EDL / XML
+                  下载素材包（zip）
                 </Button>
               </div>
             </div>
