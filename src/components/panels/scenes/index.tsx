@@ -41,6 +41,15 @@ export function ScenesView() {
 
   const handleSceneSelect = (scene: Scene | null) => {
     selectScene(scene?.id || null);
+    // 手机端：选中场景后自动滚动到上方“生成控制台”，并触发一键切割（如果已有联合图）
+    if (scene && typeof window !== "undefined" && window.innerWidth < 768) {
+      const genEl = document.getElementById("moyin-scene-generation-panel");
+      if (genEl) {
+        genEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      // 通知 GenerationPanel 进行一键切割+保存视角图（仅当该场景已有联合图时才会真正执行）
+      window.dispatchEvent(new CustomEvent("moyin-mobile-auto-split", { detail: { sceneId: scene.id } }));
+    }
   };
 
   return (
@@ -50,7 +59,7 @@ export function ScenesView() {
       <div className="md:hidden flex-1">
         <div className="flex flex-col gap-3 p-2">
           {/* 第一个面板：生成控制台 */}
-          <div className="w-full min-h-0 flex-shrink-0">
+          <div id="moyin-scene-generation-panel" className="w-full min-h-0 flex-shrink-0">
             <GenerationPanel 
               selectedScene={selectedScene}
               onSceneCreated={(id) => selectScene(id)}
@@ -66,7 +75,7 @@ export function ScenesView() {
           </div>
 
           {/* 第三个面板：场景详情 */}
-          <div className="w-full min-h-0 flex-shrink-0">
+          <div id="moyin-scene-detail-panel" className="w-full min-h-0 flex-shrink-0">
             <SceneDetail scene={selectedScene} />
           </div>
         </div>

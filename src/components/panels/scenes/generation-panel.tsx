@@ -153,6 +153,8 @@ export function GenerationPanel({ selectedScene, onSceneCreated }: GenerationPan
     setActiveTab("script");
   };
 
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+
   // Fill form when scene selected
   useEffect(() => {
     if (selectedScene) {
@@ -1268,6 +1270,40 @@ ${gridItemsZh}
     setPendingViewpoints([]);
     setPendingContactSheetPrompts([]);
   };
+
+  /**
+   * 手机端一键：切割联合图并生成视角场景
+   * 通过 window.dispatchEvent(new CustomEvent('moyin-mobile-auto-split', { detail: { sceneId } })) 触发
+   */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handler = async (event: Event) => {
+      if (!isMobile) return;
+      const custom = event as CustomEvent<{ sceneId?: string }>;
+      const targetId = custom.detail?.sceneId;
+      if (!targetId || !selectedScene || selectedScene.id !== targetId) return;
+
+      // 需要已有联合图
+      if (!contactSheetImage) {
+        toast.error("请先为该场景生成联合图，再一键生成视角。");
+        return;
+      }
+
+      // 避免并发操作
+      if (isSplitting) return;
+
+      try {
+        await handleSplitContactSheet();
+        await handleSaveViewpointImages();
+      } catch (err) {
+        console.error("[MobileAutoSplit] failed:", err);
+      }
+    };
+
+    window.addEventListener("moyin-mobile-auto-split", handler as EventListener);
+    return () => window.removeEventListener("moyin-mobile-auto-split", handler as EventListener);
+  }, [isMobile, selectedScene, contactSheetImage, isSplitting]);
 
   /**
    * 取消多视角操作

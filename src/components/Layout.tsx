@@ -144,9 +144,9 @@ export function Layout() {
               </div>
             )}
 
-            {/* Mobile Timeline (director/sclass/media only) */}
+            {/* Mobile Timeline (director/sclass/media only) - 作为普通内容出现在底部，不固定在屏幕中间，避免遮挡分镜列表 */}
             {showTimeline && (
-              <div className="flex-shrink-0 border-t border-border sticky bottom-0 bg-panel">
+              <div className="flex-shrink-0 border-t border-border bg-panel">
                 <div className="h-[160px]">
                   <SimpleTimeline />
                 </div>

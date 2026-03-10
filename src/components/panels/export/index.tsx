@@ -276,12 +276,12 @@ export function ExportView() {
                       : "bg-muted text-muted-foreground cursor-not-allowed"
                   )}
                   onClick={() => {
-                    toast.info("当前 Web 端暂不支持把所有分镜合成为单个成片 MP4，将为你导出素材包（可用于剪映/PR 合成）。");
+                    toast.info("将导出素材包：包含所有分镜生成的视频和图片，可在剪映 / PR 中自行合成成片。");
                     void handleExportMaterials();
                   }}
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  下载成片 (.mp4)
+                  下载所有分镜视频（素材包）
                 </Button>
 
                 <Button

@@ -283,6 +283,27 @@ export function SplitSceneCard({
     }
   };
 
+  // 下载视频
+  const handleDownloadVideo = async (videoUrl: string, filename: string) => {
+    try {
+      const res = await fetch(videoUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`${filename} 下载完成`);
+    } catch (err) {
+      console.error('Video download failed:', err);
+      toast.error('视频下载失败');
+    }
+  };
+
   // Status helpers
   const isImageGenerating = scene.imageStatus === 'generating' || scene.imageStatus === 'uploading';
   const isVideoReady = scene.videoStatus === 'completed' && scene.videoUrl;
@@ -860,6 +881,27 @@ export function SplitSceneCard({
                   </TooltipTrigger>
                   <TooltipContent side="top">
                     <p className="text-xs">提取最后一帧到下一分镜首帧</p>
+                  </TooltipContent>
+                </Tooltip>
+                {/* 下载视频按钮（桌面+手机通用） */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (scene.videoUrl) {
+                          handleDownloadVideo(scene.videoUrl, `分镜${scene.id + 1}_视频.mp4`);
+                        }
+                      }}
+                      disabled={!scene.videoUrl || isGeneratingAny}
+                      className="shrink-0 p-1.5 rounded bg-muted text-muted-foreground hover:bg-muted/80 disabled:opacity-50 transition-colors"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p className="text-xs">下载视频</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
