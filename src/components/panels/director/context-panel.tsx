@@ -36,6 +36,7 @@ import { useAppSettingsStore } from '@/stores/app-settings-store';
 import { useProjectStore } from '@/stores/project-store';
 import { toast } from "sonner";
 import { matchSceneAndViewpoint, matchSceneAndViewpointSync, type ViewpointMatchResult } from '@/lib/scene/viewpoint-matcher';
+import { SimpleTimeline } from "@/components/SimpleTimeline";
 
 // 状态图标
 function StatusIcon({ status }: { status?: CompletionStatus }) {
@@ -869,6 +870,11 @@ export function DirectorContextPanel() {
           <ArrowLeft className="h-4 w-4 mr-2" />
           返回剧本
         </Button>
+
+        {/* 手机端：时间线放在“返回剧本”下方，避免挡住分镜列表 */}
+        <div className="md:hidden border border-border rounded-md overflow-hidden">
+          <SimpleTimeline />
+        </div>
       </div>
     </div>
   );

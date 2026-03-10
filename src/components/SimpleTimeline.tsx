@@ -202,7 +202,7 @@ export function SimpleTimeline() {
 
   if (isCollapsed) {
     return (
-      <div className="h-full min-h-[40px] bg-panel border-t border-border flex items-center justify-between px-3">
+      <div className="h-[40px] bg-panel border-t border-border flex items-center justify-between px-3">
         <div className="flex items-center gap-2">
           <Button
             size="icon"
@@ -232,7 +232,7 @@ export function SimpleTimeline() {
   }
 
   return (
-    <div className="h-full bg-panel border-t border-border flex flex-col">
+    <div className="h-[160px] bg-panel border-t border-border flex flex-col">
       {/* Controls Bar */}
       <div className="h-10 flex items-center justify-between px-3 border-b border-border">
         <div className="flex items-center gap-2">

@@ -257,12 +257,17 @@ export function SClassSceneCard({
       let blob: Blob;
       if (imageUrl.startsWith('data:')) {
         const res = await fetch(imageUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         blob = await res.blob();
-      } else if (imageUrl.startsWith('http')) {
-        const res = await fetch(imageUrl);
+      } else if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        // 远程图片可能无 CORS，走同源代理再下载
+        const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+        const res = await fetch(proxyUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         blob = await res.blob();
       } else {
         const res = await fetch(imageUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         blob = await res.blob();
       }
       
@@ -485,6 +490,12 @@ export function SClassSceneCard({
                 setSelectedFrameTarget('start');
                 if (hasImage && resolvedImageUrl) {
                   setPreviewItem({ type: 'image', url: resolvedImageUrl, name: `分镜 ${scene.id + 1} 首帧` });
+                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                    const el = document.querySelector('[data-preview-panel]');
+                    if (el instanceof HTMLElement) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }
                 } else {
                   firstFrameInputRef.current?.click();
                 }

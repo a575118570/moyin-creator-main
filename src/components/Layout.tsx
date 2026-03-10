@@ -75,8 +75,11 @@ export function Layout() {
     );
   }
 
-  // Only show timeline for director and media tabs
-  const showTimeline = activeTab === "director" || activeTab === "sclass" || activeTab === "media";
+  // Timeline:
+  // - 桌面端：director / sclass / media 显示
+  // - 手机端：先不在 director / sclass 显示（会挤占分镜列表空间），仅 media 保留（如需要可后续做成抽屉）
+  const showTimelineDesktop = activeTab === "director" || activeTab === "sclass" || activeTab === "media";
+  const showTimelineMobile = activeTab === "media";
 
   // Left panel content based on active tab
   const renderLeftPanel = () => {
@@ -127,16 +130,16 @@ export function Layout() {
               </div>
               {/* Preview Panel - as part of scrollable content, not fixed - only show when there's content */}
               {/* For media tab, only show preview if there's actually a preview item */}
-              {(activeTab === "director" ||
-                activeTab === "sclass" ||
-                (activeTab === "media" && previewItem)) &&
-                previewItem && (
-                  <div className="flex-shrink-0 border-t border-border">
-                    <div className="h-[40vh] min-h-[200px] max-h-[400px]">
-                      <PreviewPanel />
-                    </div>
+            {(activeTab === "director" ||
+              activeTab === "sclass" ||
+              (activeTab === "media" && previewItem)) &&
+              previewItem && (
+                <div className="flex-shrink-0 border-t border-border" data-preview-panel>
+                  <div className="h-[40vh] min-h-[200px] max-h-[400px]">
+                    <PreviewPanel />
                   </div>
-                )}
+                </div>
+              )}
               {/* Properties Panel - as part of scrollable content, not fixed - smaller height when no script data */}
               {/* Show properties panel for director, sclass, and media tabs */}
               {(activeTab === "director" ||
@@ -158,11 +161,9 @@ export function Layout() {
               )}
 
               {/* Mobile Timeline：放在内容流最后，不固定，不遮挡点击 */}
-              {showTimeline && (
+              {showTimelineMobile && (
                 <div className="flex-shrink-0 border-t border-border bg-panel pb-[env(safe-area-inset-bottom)]">
-                  <div className="h-[160px]">
-                    <SimpleTimeline />
-                  </div>
+                  <SimpleTimeline />
                 </div>
               )}
             </div>
@@ -201,7 +202,7 @@ export function Layout() {
         </ResizablePanel>
 
           {/* Bottom: Timeline - only for director and media tabs */}
-          {showTimeline && (
+          {showTimelineDesktop && (
             <>
               <ResizableHandle />
               <ResizablePanel defaultSize={15} minSize={10} maxSize={40}>

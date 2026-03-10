@@ -262,9 +262,19 @@ export function SplitSceneCard({
         if (!base64) throw new Error('无法读取本地图片');
         const res = await fetch(base64);
         blob = await res.blob();
-      } else {
-        // data: / http: / https: 均可直接 fetch
+      } else if (imageUrl.startsWith('data:')) {
         const res = await fetch(imageUrl);
+        blob = await res.blob();
+      } else if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        // 远程图片可能无 CORS，走同源代理再下载
+        const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+        const res = await fetch(proxyUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        blob = await res.blob();
+      } else {
+        // 兜底：尝试直接 fetch（例如 blob:）
+        const res = await fetch(imageUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         blob = await res.blob();
       }
       
@@ -523,6 +533,12 @@ export function SplitSceneCard({
                 setSelectedFrameTarget('start');
                 if (hasImage && resolvedImageUrl) {
                   setPreviewItem({ type: 'image', url: resolvedImageUrl, name: `分镜 ${scene.id + 1} 首帧` });
+                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                    const el = document.querySelector('[data-preview-panel]');
+                    if (el instanceof HTMLElement) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }
                 } else {
                   firstFrameInputRef.current?.click();
                 }
@@ -620,6 +636,12 @@ export function SplitSceneCard({
                 setSelectedFrameTarget('end');
                 if (hasEndFrame && resolvedEndFrameUrl) {
                   setPreviewItem({ type: 'image', url: resolvedEndFrameUrl, name: `分镜 ${scene.id + 1} 尾帧` });
+                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                    const el = document.querySelector('[data-preview-panel]');
+                    if (el instanceof HTMLElement) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }
                 } else {
                   endFrameInputRef.current?.click();
                 }
