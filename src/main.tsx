@@ -19,12 +19,14 @@ window.ipcRenderer.on('main-process-message', (_event, message) => {
 })
 }
 
-// Register Service Worker for PWA (only in web environment)
-if ('serviceWorker' in navigator && !window.ipcRenderer) {
+// Register Service Worker for PWA（仅在正式环境启用，避免开发环境下频繁自动刷新）
+if (import.meta.env.PROD && 'serviceWorker' in navigator && !window.ipcRenderer) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    // 关键：避免浏览器缓存 sw.js，导致旧 SW 持续拦截请求
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
       .then((registration) => {
         console.log('[SW] Service Worker registered:', registration.scope);
+        // 不要在每次启动时强制 update()，手机端可能出现“频繁刷新/闪屏”的体验问题
       })
       .catch((error) => {
         console.error('[SW] Service Worker registration failed:', error);

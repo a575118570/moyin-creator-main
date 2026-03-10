@@ -942,11 +942,11 @@ export function MediaView() {
                               e.preventDefault();
                               handleRemove(e, item.id);
                             }}
-                            className="absolute top-1 right-1 bg-black/60 hover:bg-red-500/90 active:bg-red-600 rounded-full p-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all z-10 backdrop-blur-sm"
+                            className="absolute top-1 right-1 bg-black/60 hover:bg-red-500/90 active:bg-red-600 rounded-full p-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all z-10 backdrop-blur-sm shadow-sm"
                             title="删除"
                             aria-label="删除"
                           >
-                            <Trash2 className="h-2 w-2 text-white" />
+                            <Trash2 className="h-3.5 w-3.5 text-white" />
                           </button>
                         </div>
                         <p className="text-xs mt-1 truncate">{item.name}</p>
@@ -1084,11 +1084,11 @@ export function MediaView() {
                         e.preventDefault();
                         handleRemove(e, item.id);
                       }}
-                      className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-red-500/90 active:bg-red-600 rounded-full p-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all z-10 backdrop-blur-sm"
+                      className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-red-500/90 active:bg-red-600 rounded-full p-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all z-10 backdrop-blur-sm shadow-sm"
                       title="删除"
                       aria-label="删除"
                     >
-                      <Trash2 className="h-1.5 w-1.5 text-white" />
+                      <Trash2 className="h-3 w-3 text-white" />
                     </button>
                   </div>
                   <div className="flex-1 min-w-0">

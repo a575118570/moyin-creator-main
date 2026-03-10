@@ -143,6 +143,15 @@ export function Layout() {
                 </div>
               </div>
             )}
+
+            {/* Mobile Timeline (director/sclass/media only) */}
+            {showTimeline && (
+              <div className="flex-shrink-0 border-t border-border sticky bottom-0 bg-panel">
+                <div className="h-[160px]">
+                  <SimpleTimeline />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

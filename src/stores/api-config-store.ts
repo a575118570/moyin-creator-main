@@ -95,8 +95,12 @@ export const DEFAULT_ADVANCED_OPTIONS: AdvancedGenerationOptions = {
 
 /**
  * 图床平台
+ * - imgbb: 官方 imgbb 图床
+ * - img_scdn: https://img.scdn.io 公共图床（无鉴权，文件上传）
+ * - cloudflare_r2: Cloudflare R2 存储
+ * - custom: 其他自定义图床
  */
-export type ImageHostPlatform = 'imgbb' | 'cloudflare_r2' | 'custom';
+export type ImageHostPlatform = 'imgbb' | 'img_scdn' | 'cloudflare_r2' | 'custom';
 
 /**
  * 图床供应商配置（独立映射）
@@ -116,6 +120,8 @@ export interface ImageHostProvider {
   nameField?: string; // 表单字段名（默认 name）
   responseUrlField?: string; // 响应中 URL 字段路径（如 data.url）
   responseDeleteUrlField?: string; // 响应中删除 URL 字段路径
+  /** 是否按“文件（二进制）”上传；例如 img.scdn.io 要求 multipart file，而不是 base64 字符串 */
+  binaryUpload?: boolean;
 }
 
 /** 图床供应商默认模板（仅用于预设） */
@@ -132,6 +138,18 @@ export const DEFAULT_IMAGE_HOST_PROVIDERS: Omit<ImageHostProvider, 'id' | 'apiKe
     nameField: 'name',
     responseUrlField: 'data.url',
     responseDeleteUrlField: 'data.delete_url',
+  },
+  {
+    platform: 'img_scdn',
+    name: 'img.scdn.io',
+    baseUrl: 'https://img.scdn.io',
+    uploadPath: '/api/v1.php',
+    enabled: true,
+    imageField: 'image',
+    // 文档说明响应为 { success, url, ... }，直接读取 url 字段
+    // 参考: https://img.scdn.io/api_docs.php
+    responseUrlField: 'url',
+    binaryUpload: true,
   },
 ];
 

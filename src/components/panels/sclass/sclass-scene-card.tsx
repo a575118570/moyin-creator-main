@@ -54,6 +54,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useSimpleTimelineStore } from "@/stores/simple-timeline-store";
 import { EmotionTags } from "../director/emotion-tags";
 import { ShotSizeSelector } from "../director/shot-size-selector";
 import { DurationSelector } from "../director/duration-selector";
@@ -289,6 +290,7 @@ export function SClassSceneCard({
   const hasImage = !!effectiveImageUrl;
   const hasEndFrame = !!effectiveEndFrameUrl;
   const canDragVideo = isVideoReady && scene.videoUrl;
+  const addClipToTimeline = useSimpleTimelineStore((s) => s.addClip);
 
   // Handle drag start for video
   const handleVideoDragStart = (e: React.DragEvent) => {
@@ -316,6 +318,21 @@ export function SClassSceneCard({
     setTimeout(() => document.body.removeChild(dragImage), 0);
   };
 
+  // Mobile-friendly fallback: add video to timeline without drag/drop
+  const handleAddVideoToTimeline = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!canDragVideo || !scene.videoUrl) return;
+    addClipToTimeline({
+      mediaId: scene.videoMediaId || `scene-${scene.id}-video`,
+      name: `分镜 ${scene.id + 1} - AI视频`,
+      url: scene.videoUrl,
+      thumbnailUrl: scene.imageDataUrl || resolvedImageUrl,
+      duration: 5,
+    });
+    toast.success(`已添加: 分镜 ${scene.id + 1} - AI视频`);
+  };
+
   // 隐藏的文件上传 input
   const firstFrameInput = (
     <input
@@ -341,7 +358,7 @@ export function SClassSceneCard({
     <div className="group relative border rounded-lg overflow-hidden bg-card hover:border-primary/50 transition-colors">
       {/* 分镜编号和控制栏 */}
       <div className="flex items-center justify-between px-3 py-1.5 bg-muted/30 border-b">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-2">
           <span className="text-sm font-bold text-muted-foreground">分镜 #{scene.id + 1}</span>
           {(scene.sceneName || scene.sceneLocation) && (
             <TooltipProvider>
@@ -459,44 +476,49 @@ export function SClassSceneCard({
                     loading="lazy"
                     decoding="async"
                   />
-                  <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover/image:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="absolute top-2 right-2 md:top-1 md:right-1 flex gap-0.5 md:gap-1 opacity-100 md:opacity-0 md:group-hover/image:opacity-100 transition-opacity scale-90 md:scale-100 origin-top-right"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); e.preventDefault(); onAngleSwitch?.(scene.id, "start"); }}
                       disabled={isAngleSwitching}
-                      className="p-0.5 rounded bg-black/50 text-white hover:bg-amber-600 disabled:opacity-50"
+                      className="moyin-icon-btn p-0 rounded bg-black/55 text-white hover:bg-amber-600 disabled:opacity-50"
                       title="切换视角"
                     >
-                      <RotateCw className="h-3 w-3" />
+                      <RotateCw className="h-2.5 w-2.5" />
                     </button>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); e.preventDefault(); onQuadGrid?.(scene.id, "start"); }}
                       disabled={isQuadGridGenerating}
-                      className="p-0.5 rounded bg-black/50 text-white hover:bg-cyan-600 disabled:opacity-50"
+                      className="moyin-icon-btn p-0 rounded bg-black/55 text-white hover:bg-cyan-600 disabled:opacity-50"
                       title="四宫格生成"
                     >
-                      <Grid2X2 className="h-3 w-3" />
+                      <Grid2X2 className="h-2.5 w-2.5" />
                     </button>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDownloadImage(resolvedImageUrl || scene.imageDataUrl, `分镜${scene.id + 1}_首帧.png`); }}
-                      className="p-0.5 rounded bg-black/50 text-white hover:bg-blue-600"
+                      className="moyin-icon-btn p-0 rounded bg-black/55 text-white hover:bg-blue-600"
                       title="下载首帧"
                     >
-                      <Download className="h-3 w-3" />
+                      <Download className="h-2.5 w-2.5" />
                     </button>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleRemoveImage(); }}
-                      className="p-0.5 rounded bg-black/50 text-white hover:bg-red-600"
+                      className="moyin-icon-btn p-0 rounded bg-black/55 text-white hover:bg-red-600"
                       title="删除首帧"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-2.5 w-2.5" />
                     </button>
                   </div>
                   {scene.imageSource === 'ai-generated' && (
-                    <span className="absolute bottom-0.5 left-0.5 text-[8px] bg-primary text-white px-1 rounded">AI</span>
+                    <span className="absolute bottom-0.5 left-0.5 inline-flex w-auto h-auto items-center justify-center leading-none text-[7px] bg-primary/60 text-white px-0.5 py-0 rounded-[3px] scale-50 origin-bottom-left pointer-events-none select-none md:text-[9px] md:bg-primary/85 md:px-1 md:py-0.5 md:rounded-sm md:scale-100">
+                      AI
+                    </span>
                   )}
                 </>
               ) : (
@@ -619,44 +641,49 @@ export function SClassSceneCard({
                     loading="lazy"
                     decoding="async"
                   />
-                  <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover/endframe:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="absolute top-2 right-2 md:top-1 md:right-1 flex gap-0.5 md:gap-1 opacity-100 md:opacity-0 md:group-hover/endframe:opacity-100 transition-opacity scale-90 md:scale-100 origin-top-right"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); e.preventDefault(); onAngleSwitch?.(scene.id, "end"); }}
                       disabled={isAngleSwitching}
-                      className="p-0.5 rounded bg-black/50 text-white hover:bg-amber-600 disabled:opacity-50"
+                      className="moyin-icon-btn p-0 rounded bg-black/55 text-white hover:bg-amber-600 disabled:opacity-50"
                       title="切换视角"
                     >
-                      <RotateCw className="h-3 w-3" />
+                      <RotateCw className="h-2.5 w-2.5" />
                     </button>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); e.preventDefault(); onQuadGrid?.(scene.id, "end"); }}
                       disabled={isQuadGridGenerating}
-                      className="p-0.5 rounded bg-black/50 text-white hover:bg-cyan-600 disabled:opacity-50"
+                      className="moyin-icon-btn p-0 rounded bg-black/55 text-white hover:bg-cyan-600 disabled:opacity-50"
                       title="四宫格生成"
                     >
-                      <Grid2X2 className="h-3 w-3" />
+                      <Grid2X2 className="h-2.5 w-2.5" />
                     </button>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDownloadImage(resolvedEndFrameUrl || scene.endFrameImageUrl!, `分镜${scene.id + 1}_尾帧.png`); }}
-                      className="p-0.5 rounded bg-black/50 text-white hover:bg-blue-600"
+                      className="moyin-icon-btn p-0 rounded bg-black/55 text-white hover:bg-blue-600"
                       title="下载尾帧"
                     >
-                      <Download className="h-3 w-3" />
+                      <Download className="h-2.5 w-2.5" />
                     </button>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleRemoveEndFrame(); }}
-                      className="p-0.5 rounded bg-black/50 text-white hover:bg-red-600"
+                      className="moyin-icon-btn p-0 rounded bg-black/55 text-white hover:bg-red-600"
                       title="删除尾帧"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-2.5 w-2.5" />
                     </button>
                   </div>
                   {scene.endFrameSource === 'ai-generated' && (
-                    <span className="absolute bottom-0.5 left-0.5 text-[8px] bg-orange-500 text-white px-1 rounded">AI</span>
+                    <span className="absolute bottom-0.5 left-0.5 inline-flex w-auto h-auto items-center justify-center leading-none text-[7px] bg-orange-500/60 text-white px-0.5 py-0 rounded-[3px] scale-50 origin-bottom-left pointer-events-none select-none md:text-[9px] md:bg-orange-500/85 md:px-1 md:py-0.5 md:rounded-sm md:scale-100">
+                      AI
+                    </span>
                   )}
                 </>
               ) : scene.endFrameStatus === 'generating' ? (
@@ -805,9 +832,9 @@ export function SClassSceneCard({
           )}
           
           {isVideoReady && scene.videoUrl && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2 w-full md:w-auto">
               <div 
-                className="flex-1 aspect-video max-w-[120px] bg-muted rounded overflow-hidden cursor-pointer relative"
+                className="aspect-video w-[220px] max-w-full md:w-auto md:max-w-[120px] bg-muted rounded overflow-hidden cursor-pointer relative"
                 onClick={() => setPreviewItem({ type: 'video', url: scene.videoUrl!, name: `分镜 ${scene.id + 1} 视频` })}
                 draggable={!!canDragVideo}
                 onDragStart={handleVideoDragStart}
@@ -817,9 +844,17 @@ export function SClassSceneCard({
                   <Play className="h-4 w-4 text-white" />
                 </div>
                 {canDragVideo && (
-                  <span className="absolute bottom-0.5 right-0.5 text-[8px] bg-green-600 text-white px-1 rounded">拖到时间线</span>
+                  <span className="hidden md:inline absolute bottom-0.5 right-0.5 text-[8px] bg-green-600 text-white px-1 rounded">拖到时间线</span>
                 )}
               </div>
+              {/* 手机端不支持原生拖拽：提供“加入时间线”按钮作为兜底 */}
+              <button
+                onClick={handleAddVideoToTimeline}
+                className="md:hidden shrink-0 px-2 py-1.5 rounded bg-green-500/20 text-green-600 dark:text-green-400 hover:bg-green-500/30 transition-colors text-xs font-medium"
+                title="加入时间线"
+              >
+                加入时间线
+              </button>
               {/* 提取尾帧按钮 */}
               <TooltipProvider>
                 <Tooltip>
@@ -830,7 +865,7 @@ export function SClassSceneCard({
                         onExtractVideoLastFrame?.(scene.id);
                       }}
                       disabled={isExtractingFrame || isGeneratingAny}
-                      className="p-1.5 rounded bg-cyan-500/20 text-cyan-600 hover:bg-cyan-500/30 disabled:opacity-50 transition-colors"
+                      className="shrink-0 p-1.5 rounded bg-cyan-500/20 text-cyan-600 hover:bg-cyan-500/30 disabled:opacity-50 transition-colors"
                     >
                       {isExtractingFrame ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />

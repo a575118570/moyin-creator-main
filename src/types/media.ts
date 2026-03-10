@@ -40,4 +40,6 @@ export interface MediaFile {
   source?: MediaSource;
   // Project association (for isolation)
   projectId?: string;
+  // Creation timestamp for auto-cleanup
+  createdAt?: number;
 }

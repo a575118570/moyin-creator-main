@@ -406,6 +406,15 @@ article::-webkit-scrollbar {
     padding: 0.625rem 1rem;
   }
   
+  /* Icon-only buttons inside thumbnails / scene cards.
+     Keep them compact on mobile by overriding the global touch-friendly rule above. */
+  .moyin-icon-btn {
+    min-height: auto !important;
+    min-width: auto !important;
+    padding: 0.125rem !important;
+    line-height: 1 !important;
+  }
+  
   /* 输入框适配 */
   input,
   textarea,

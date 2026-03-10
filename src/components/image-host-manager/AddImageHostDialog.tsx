@@ -41,6 +41,16 @@ const IMAGE_HOST_PRESETS: Array<Omit<ImageHostProvider, "id" | "apiKey">> = [
     responseDeleteUrlField: "data.delete_url",
   },
   {
+    platform: "img_scdn",
+    name: "img.scdn.io",
+    baseUrl: "https://img.scdn.io",
+    uploadPath: "/api/v1.php",
+    enabled: true,
+    imageField: "image",
+    responseUrlField: "url",
+    binaryUpload: true,
+  },
+  {
     platform: "custom",
     name: "自定义图床",
     baseUrl: "",
@@ -80,6 +90,7 @@ export function AddImageHostDialog({
   const [nameField, setNameField] = useState("");
   const [responseUrlField, setResponseUrlField] = useState("");
   const [responseDeleteUrlField, setResponseDeleteUrlField] = useState("");
+  const [binaryUpload, setBinaryUpload] = useState(false);
 
   const selectedPreset = IMAGE_HOST_PRESETS.find((p) => p.platform === platform);
 
@@ -98,6 +109,7 @@ export function AddImageHostDialog({
       setNameField("");
       setResponseUrlField("");
       setResponseDeleteUrlField("");
+      setBinaryUpload(false);
     }
   }, [open]);
 
@@ -114,6 +126,7 @@ export function AddImageHostDialog({
       setNameField(selectedPreset.nameField || "");
       setResponseUrlField(selectedPreset.responseUrlField || "");
       setResponseDeleteUrlField(selectedPreset.responseDeleteUrlField || "");
+      setBinaryUpload(selectedPreset.binaryUpload ?? false);
     }
   }, [selectedPreset]);
 
@@ -126,7 +139,8 @@ export function AddImageHostDialog({
       toast.error("请配置 Base URL 或 Upload Path");
       return;
     }
-    if (!apiKey.trim()) {
+    // 仅对 imgbb 强制要求 API Key；其他图床（如 img.scdn.io）可以为公共/免鉴权
+    if (platform === "imgbb" && !apiKey.trim()) {
       toast.error("请输入 API Key");
       return;
     }
@@ -145,6 +159,7 @@ export function AddImageHostDialog({
       nameField: nameField.trim() || undefined,
       responseUrlField: responseUrlField.trim() || undefined,
       responseDeleteUrlField: responseDeleteUrlField.trim() || undefined,
+      binaryUpload: binaryUpload || undefined,
     });
 
     onOpenChange(false);

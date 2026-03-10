@@ -86,6 +86,24 @@ export async function convertToHttpUrl(rawUrl: unknown): Promise<string> {
     return '';
   }
   
+  // Cache: avoid re-uploading the same image repeatedly (huge speedup for retries / regen).
+  // Keyed by the original string URL (data:, local-image://, http(s)://).
+  const CACHE_KEY = 'moyin_video_ref_http_url_cache_v1';
+  const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+  try {
+    const now = Date.now();
+    const cacheRaw = localStorage.getItem(CACHE_KEY);
+    if (cacheRaw) {
+      const cache = JSON.parse(cacheRaw) as Record<string, { v: string; t: number }>;
+      const hit = cache[url];
+      if (hit?.v && hit.t && now - hit.t < CACHE_TTL_MS) {
+        return hit.v;
+      }
+    }
+  } catch {
+    // ignore cache parse errors
+  }
+  
   // Already HTTP URL - use directly
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
@@ -112,6 +130,26 @@ export async function convertToHttpUrl(rawUrl: unknown): Promise<string> {
   if (!result.success || !result.url) {
     throw new Error(result.error || '图床上传失败');
   }
+
+  // Store cache
+  try {
+    const now = Date.now();
+    const cacheRaw = localStorage.getItem(CACHE_KEY);
+    const cache = (cacheRaw ? (JSON.parse(cacheRaw) as Record<string, { v: string; t: number }>) : {}) || {};
+    cache[url] = { v: result.url, t: now };
+    // Best-effort pruning to keep storage small
+    const entries = Object.entries(cache);
+    if (entries.length > 200) {
+      entries
+        .sort((a, b) => (a[1].t || 0) - (b[1].t || 0))
+        .slice(0, entries.length - 200)
+        .forEach(([k]) => delete cache[k]);
+    }
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    // ignore storage errors
+  }
+
   return result.url;
 }
 
@@ -623,12 +661,18 @@ async function callUnifiedVideoApi(
     `${cleanBaseUrl}/v1/video/generations/${taskId}`,
     `${cleanBaseUrl}/v1/video/query?id=${taskId}`,
   ];
-  const pollInterval = 5000;
-  const maxAttempts = 180;
+  // 优化轮询策略：开始时3秒，30次后改为5秒，60次后改为8秒（支持更长的视频生成时间）
+  const getPollInterval = (attempt: number) => {
+    if (attempt < 30) return 3000; // 前30次：3秒
+    if (attempt < 60) return 5000; // 30-60次：5秒
+    return 8000; // 60次后：8秒
+  };
+  const maxAttempts = 360; // 增加到360次，支持约30-40分钟的视频生成
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     onProgress?.(Math.min(20 + Math.floor((attempt / maxAttempts) * 80), 99));
-    await new Promise(r => setTimeout(r, pollInterval));
+    const currentInterval = getPollInterval(attempt);
+    await new Promise(r => setTimeout(r, currentInterval));
 
     for (const pollUrl of pollUrls) {
       const statusResponse = await fetch(pollUrl, {
@@ -906,8 +950,13 @@ async function pollVolcTaskWithAuth(
   authFormat: 'Bearer' | 'direct' | 'X-API-Key' = 'Bearer',
   isOfficialApi: boolean = false,
 ): Promise<string> {
-  const pollInterval = 5000;
-  const maxAttempts = 180; // 15分钟
+  // 优化轮询策略：开始时3秒，30次后改为5秒，60次后改为8秒
+  const getPollInterval = (attempt: number) => {
+    if (attempt < 30) return 3000;
+    if (attempt < 60) return 5000;
+    return 8000;
+  };
+  const maxAttempts = 360; // 增加到360次，支持约30-40分钟的视频生成
 
   // 根据authFormat构建headers
   const getHeaders = () => {
@@ -944,7 +993,8 @@ async function pollVolcTaskWithAuth(
     if (!statusResponse.ok) {
       if (statusResponse.status === 404) throw new Error('任务不存在');
       console.warn('[VideoGen] Volc query failed:', statusResponse.status);
-      await new Promise(r => setTimeout(r, pollInterval));
+      const currentInterval = getPollInterval(attempt);
+      await new Promise(r => setTimeout(r, currentInterval));
       continue;
     }
 
@@ -967,7 +1017,8 @@ async function pollVolcTaskWithAuth(
     }
 
     // queued / running → 继续轮询
-    await new Promise(r => setTimeout(r, pollInterval));
+    const currentInterval = getPollInterval(attempt);
+    await new Promise(r => setTimeout(r, currentInterval));
   }
   throw new Error('视频生成超时');
 }
@@ -1033,8 +1084,13 @@ async function callWanVideoApi(
   if (!taskId) throw new Error('返回空的任务 ID');
 
   // 轮询: GET /alibailian/api/v1/tasks/{task_id}
-  const pollInterval = 5000;
-  const maxAttempts = 180;
+  // 优化轮询策略：开始时3秒，30次后改为5秒，60次后改为8秒
+  const getPollInterval = (attempt: number) => {
+    if (attempt < 30) return 3000;
+    if (attempt < 60) return 5000;
+    return 8000;
+  };
+  const maxAttempts = 360; // 增加到360次，支持约30-40分钟的视频生成
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     onProgress?.(Math.min(20 + Math.floor((attempt / maxAttempts) * 80), 99));
@@ -1050,7 +1106,8 @@ async function callWanVideoApi(
     if (!statusResponse.ok) {
       if (statusResponse.status === 404) throw new Error('任务不存在');
       console.warn('[VideoGen] Wan query failed:', statusResponse.status);
-      await new Promise(r => setTimeout(r, pollInterval));
+      const currentInterval = getPollInterval(attempt);
+      await new Promise(r => setTimeout(r, currentInterval));
       continue;
     }
 
@@ -1070,7 +1127,8 @@ async function callWanVideoApi(
       throw new Error(statusData.output?.message || statusData.output?.error || '视频生成失败');
     }
 
-    await new Promise(r => setTimeout(r, pollInterval));
+    const currentInterval = getPollInterval(attempt);
+    await new Promise(r => setTimeout(r, currentInterval));
   }
   throw new Error('视频生成超时');
 }
@@ -1154,12 +1212,18 @@ async function callKlingVideoApi(
 
   // 轮询 URL 镜像提交路径: GET /kling/v1/videos/{path}/{task_id}
   const pollUrl = `${baseUrl}/kling/v1/videos/${endpointPath}/${taskId}`;
-  const pollInterval = 5000;
-  const maxAttempts = 180;
+  // 优化轮询策略：开始时3秒，30次后改为5秒，60次后改为8秒
+  const getPollInterval = (attempt: number) => {
+    if (attempt < 30) return 3000;
+    if (attempt < 60) return 5000;
+    return 8000;
+  };
+  const maxAttempts = 360; // 增加到360次，支持约30-40分钟的视频生成
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     onProgress?.(Math.min(20 + Math.floor((attempt / maxAttempts) * 80), 99));
-    await new Promise(r => setTimeout(r, pollInterval));
+    const currentInterval = getPollInterval(attempt);
+    await new Promise(r => setTimeout(r, currentInterval));
 
     const statusResponse = await fetch(pollUrl, {
       method: 'GET',
@@ -1252,12 +1316,18 @@ async function callOpenAIOfficialVideoApi(
 
   // 轮询: GET /v1/videos/{taskId}
   const pollUrl = `${baseUrl}/v1/videos/${taskId}`;
-  const pollInterval = 5000;
-  const maxAttempts = 180;
+  // 优化轮询策略：开始时3秒，30次后改为5秒，60次后改为8秒
+  const getPollInterval = (attempt: number) => {
+    if (attempt < 30) return 3000;
+    if (attempt < 60) return 5000;
+    return 8000;
+  };
+  const maxAttempts = 360; // 增加到360次，支持约30-40分钟的视频生成
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     onProgress?.(Math.min(20 + Math.floor((attempt / maxAttempts) * 80), 99));
-    await new Promise(r => setTimeout(r, pollInterval));
+    const currentInterval = getPollInterval(attempt);
+    await new Promise(r => setTimeout(r, currentInterval));
 
     const statusResponse = await fetch(pollUrl, {
       method: 'GET',
@@ -1342,12 +1412,18 @@ async function callReplicateVideoApi(
 
   // 轮询: GET /replicate/v1/predictions/{id}
   const pollUrl = `${rootBase}/replicate/v1/predictions/${predictionId}`;
-  const pollInterval = 5000;
-  const maxAttempts = 180;
+  // 优化轮询策略：开始时3秒，30次后改为5秒，60次后改为8秒
+  const getPollInterval = (attempt: number) => {
+    if (attempt < 30) return 3000;
+    if (attempt < 60) return 5000;
+    return 8000;
+  };
+  const maxAttempts = 360; // 增加到360次，支持约30-40分钟的视频生成
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     onProgress?.(Math.min(20 + Math.floor((attempt / maxAttempts) * 80), 99));
-    await new Promise(r => setTimeout(r, pollInterval));
+    const currentInterval = getPollInterval(attempt);
+    await new Promise(r => setTimeout(r, currentInterval));
 
     const statusResponse = await fetch(pollUrl, {
       method: 'GET',
@@ -1671,8 +1747,13 @@ export async function callJuxinVideoGenerationApi(
   console.log('[VideoGen] Grok task ID:', taskId);
 
   // Poll for completion
-  const pollInterval = 5000; // 5 seconds for Grok (longer video generation)
-  const maxAttempts = 180; // 15 minutes max
+  // 优化轮询策略：开始时3秒，30次后改为5秒，60次后改为8秒
+  const getPollInterval = (attempt: number) => {
+    if (attempt < 30) return 3000;
+    if (attempt < 60) return 5000;
+    return 8000;
+  };
+  const maxAttempts = 360; // 增加到360次，支持约30-40分钟的视频生成
   
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const progress = Math.min(20 + Math.floor((attempt / maxAttempts) * 80), 99);
@@ -1696,7 +1777,8 @@ export async function callJuxinVideoGenerationApi(
         throw new Error('任务不存在');
       }
       console.warn('[VideoGen] Grok query failed:', statusResponse.status);
-      await new Promise(r => setTimeout(r, pollInterval));
+      const currentInterval = getPollInterval(attempt);
+      await new Promise(r => setTimeout(r, currentInterval));
       continue;
     }
 
@@ -1723,7 +1805,8 @@ export async function callJuxinVideoGenerationApi(
     }
 
     // Status is pending/processing, continue polling
-    await new Promise(r => setTimeout(r, pollInterval));
+      const currentInterval = getPollInterval(attempt);
+      await new Promise(r => setTimeout(r, currentInterval));
   }
   
   throw new Error('视频生成超时');

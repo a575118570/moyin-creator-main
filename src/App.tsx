@@ -15,6 +15,8 @@ import { formatRemaining, useTrialStore } from "@/stores/trial-store";
 import { toast } from "sonner";
 import { useProjectStore } from "@/stores/project-store";
 import { useMediaPanelStore } from "@/stores/media-panel-store";
+import { initAutoSave, recoverFromBackup } from "@/lib/auto-save";
+import { initCacheCleaner } from "@/lib/cache-cleaner";
 
 function App() {
   const { theme } = useThemeStore();
@@ -32,6 +34,7 @@ function App() {
         console.log('[App] Starting migration...');
         await migrateToProjectStorage();
         await recoverFromLegacy();
+        recoverFromBackup(); // 恢复备份数据
         console.log('[App] Migration complete');
       } catch (err) {
         console.error('[App] Migration/recovery error:', err);
@@ -41,6 +44,20 @@ function App() {
       }
     })();
   }, []);
+
+  // 初始化自动保存功能
+  useEffect(() => {
+    if (isMigrating) return;
+    const cleanup = initAutoSave();
+    return cleanup;
+  }, [isMigrating]);
+
+  // 初始化自动清理缓存功能
+  useEffect(() => {
+    if (isMigrating) return;
+    const cleanup = initCacheCleaner();
+    return cleanup;
+  }, [isMigrating]);
 
   // 迁移完成后刷新 license 校验（防止热更新/恢复造成的状态不一致）
   useEffect(() => {

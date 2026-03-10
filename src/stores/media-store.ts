@@ -231,6 +231,7 @@ export const useMediaStore = create<MediaStore>()(
       ...file,
       id: generateUUID(),
       projectId,
+      createdAt: file.createdAt || Date.now(), // Record creation time for auto-cleanup
     };
 
     // Add to local state immediately for UI responsiveness
@@ -492,6 +493,7 @@ export const useMediaStore = create<MediaStore>()(
       folderId: folderId ?? null,
       projectId,
       file: null as any, // No file object for URL-based media
+      createdAt: Date.now(), // Record creation time for auto-cleanup
     };
     
     // Add to state immediately (with URL)

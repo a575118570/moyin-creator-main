@@ -42,8 +42,8 @@ const defaultState: AppSettingsState = {
     basePath: "",
   },
   cacheSettings: {
-    autoCleanEnabled: false,
-    autoCleanDays: 30,
+    autoCleanEnabled: true,
+    autoCleanDays: 15,
   },
 };
 

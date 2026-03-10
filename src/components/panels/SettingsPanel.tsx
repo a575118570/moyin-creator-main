@@ -77,6 +77,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { uploadToImageHost } from "@/lib/image-host";
+import { manualCleanup } from "@/lib/cache-cleaner";
 
 // Platform icon mapping
 const PLATFORM_ICONS: Record<string, React.ReactNode> = {
@@ -130,6 +131,7 @@ export function SettingsPanel() {
   const [cacheSize, setCacheSize] = useState(0);
   const [isCacheLoading, setIsCacheLoading] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
+  const [isCleaningAIMedia, setIsCleaningAIMedia] = useState(false);
 
   // License
   const { licenseKey, status: licenseStatus, activate: activateLicense, clear: clearLicense, getHint: getLicenseHint } =
@@ -1087,7 +1089,9 @@ export function SettingsPanel() {
                   <div className="space-y-3">
                     {imageHostProviders.map((provider) => {
                       const keyCount = getApiKeyCount(provider.apiKey);
-                      const configured = provider.enabled && keyCount > 0;
+                      const isPublicHost = provider.platform === 'img_scdn';
+                      // 公共图床（如 img.scdn.io）允许 0 Key 也视为「已配置」
+                      const configured = provider.enabled && (isPublicHost || keyCount > 0);
                       const endpoint = provider.uploadPath || provider.baseUrl;
                       return (
                         <div key={provider.id} className="p-4 border border-border rounded-xl bg-card space-y-3">
@@ -1372,8 +1376,8 @@ export function SettingsPanel() {
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium">自动清理</p>
-                    <p className="text-xs text-muted-foreground">默认关闭</p>
+                    <p className="text-sm font-medium">自动清理 AI 生成内容</p>
+                    <p className="text-xs text-muted-foreground">自动清理超过指定天数的 AI 生成的图片和视频</p>
                   </div>
                   <Switch
                     checked={cacheSettings.autoCleanEnabled}
@@ -1392,9 +1396,54 @@ export function SettingsPanel() {
                       setCacheSettings({ autoCleanDays: Math.max(1, parseInt(e.target.value) || 1) })
                     }
                     className="w-20"
-                    disabled={!cacheSettings.autoCleanEnabled}
+                    disabled={!cacheSettings.autoCleanEnabled || !hasStorageManager}
                   />
-                  <span className="text-xs text-muted-foreground">天前的缓存文件</span>
+                  <span className="text-xs text-muted-foreground">天前的 AI 生成图片和视频</span>
+                </div>
+
+                {/* Manual cleanup button */}
+                <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <div>
+                    <p className="text-sm font-medium">手动清理</p>
+                    <p className="text-xs text-muted-foreground">立即清理超过 {cacheSettings.autoCleanDays} 天的 AI 生成内容</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setIsCleaningAIMedia(true);
+                      try {
+                        const result = await manualCleanup();
+                        if (result.cleaned > 0) {
+                          toast.success(`已清理 ${result.cleaned} 个文件`);
+                          refreshCacheSize();
+                        } else {
+                          toast.info('没有需要清理的文件');
+                        }
+                        if (result.errors > 0) {
+                          toast.warning(`${result.errors} 个文件清理失败`);
+                        }
+                      } catch (error) {
+                        console.error('手动清理失败:', error);
+                        toast.error('清理失败，请稍后重试');
+                      } finally {
+                        setIsCleaningAIMedia(false);
+                      }
+                    }}
+                    disabled={!hasStorageManager || isCleaningAIMedia}
+                  >
+                    {isCleaningAIMedia ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                        清理中...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="h-4 w-4 mr-1" />
+                        立即清理
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
 
