@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFreedomStore, type HistoryEntry } from '@/stores/freedom-store';
 import { cn } from '@/lib/utils';
+import { usePreviewStore } from '@/stores/preview-store';
 
 interface GenerationHistoryProps {
   type: 'image' | 'video' | 'cinema';
@@ -15,6 +16,7 @@ interface GenerationHistoryProps {
 export function GenerationHistory({ type, onSelect, className }: GenerationHistoryProps) {
   const { imageHistory, videoHistory, cinemaHistory, removeHistoryEntry, clearHistory } =
     useFreedomStore();
+  const { setPreviewItem } = usePreviewStore();
 
   const history =
     type === 'image'
@@ -51,7 +53,21 @@ export function GenerationHistory({ type, onSelect, className }: GenerationHisto
             <div
               key={entry.id}
               className="group relative rounded-lg border bg-card overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => onSelect?.(entry)}
+              onClick={() => {
+                onSelect?.(entry);
+                setPreviewItem({
+                  type: entry.type,
+                  url: entry.resultUrl,
+                  name: entry.prompt || entry.model,
+                });
+                // Mobile: scroll preview into view
+                if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                  const el = document.querySelector('[data-preview-panel]');
+                  if (el instanceof HTMLElement) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }
+              }}
             >
               {/* Thumbnail */}
               <div className="aspect-video w-full bg-muted overflow-hidden">

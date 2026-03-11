@@ -378,9 +378,20 @@ async function generateViaChatCompletions(
   const endpoint = buildEndpoint(baseUrl, 'chat/completions');
   const aspectRatio = params.aspectRatio || '1:1';
 
-  const userContent: Array<{ type: string; text?: string }> = [
+  const userContent: Array<any> = [
     { type: 'text', text: `Generate an image with aspect ratio ${aspectRatio}: ${params.prompt}` },
   ];
+
+  // Reference image(s): allow multi-image guidance for models that support vision input.
+  // Accept either extraParams.image_url (string) or extraParams.image_urls (string[])
+  const extra = params.extraParams || {};
+  const refUrls: string[] = Array.isArray(extra.image_urls)
+    ? extra.image_urls.filter((u: any) => typeof u === 'string' && u.trim())
+    : (typeof extra.image_url === 'string' && extra.image_url.trim() ? [extra.image_url] : []);
+
+  for (const url of refUrls) {
+    userContent.push({ type: 'image_url', image_url: { url } });
+  }
 
   const requestBody = {
     model,

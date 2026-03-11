@@ -319,6 +319,20 @@ export const T2I_MODELS: T2IModel[] = [
     inputs: {
       prompt: promptInput(),
       aspect_ratio: aspectRatioInput(['1:1', '16:9', '9:16', '3:4', '4:3']),
+      // Reference image (multi-modal / guided generation)
+      image_url: {
+        type: 'array',
+        maxItems: 4,
+        description: 'Reference image URL(s) or data URL(s)',
+      },
+      strength: {
+        type: 'number',
+        minValue: 0,
+        maxValue: 1,
+        step: 0.01,
+        default: 0.6,
+        description: 'Reference strength (0 = keep reference, 1 = ignore reference)',
+      },
     },
   },
   // 16
@@ -427,6 +441,20 @@ export const T2I_MODELS: T2IModel[] = [
       ]),
       resolution: resolutionInput(['1K', '2K', '4K']),
       num_images: numImagesInput(1, 4),
+      // Reference image (multi-modal / guided generation)
+      image_url: {
+        type: 'array',
+        maxItems: 4,
+        description: 'Reference image URL(s) or data URL(s)',
+      },
+      strength: {
+        type: 'number',
+        minValue: 0,
+        maxValue: 1,
+        step: 0.01,
+        default: 0.6,
+        description: 'Reference strength (0 = keep reference, 1 = ignore reference)',
+      },
     },
   },
   // 24
@@ -568,7 +596,17 @@ export const T2I_MODELS: T2IModel[] = [
   // 36
   {
     id: 'nano-banana-pro',
-    providerAliases: ["nano-banana-pro","gemini-3-pro-image-preview"],
+    // Note: Some providers expose this as Gemini "flash image preview" variants.
+    providerAliases: [
+      "nano-banana-pro",
+      "gemini-3-pro-image-preview",
+      "gemini-3.1-flash-image-preview",
+      "gemini-3-1-flash-image-preview",
+      "gemini-2.5-flash-image",
+      "gemini-2.5-flash-image-preview",
+      "gemini-2-5-flash-image",
+      "gemini-2-5-flash-image-preview",
+    ],
     name: 'Nano Banana Pro',
     inputs: {
       prompt: promptInput(),
@@ -576,6 +614,20 @@ export const T2I_MODELS: T2IModel[] = [
         '1:1', '3:4', '4:3', '9:16', '16:9', '3:2', '2:3', '5:4', '4:5', '21:9',
       ]),
       resolution: resolutionInput(['1k', '2k', '4k']),
+      // Reference image (image-to-image / guided generation)
+      image_url: {
+        type: 'array',
+        maxItems: 4,
+        description: 'Reference image URL(s) or data URL(s)',
+      },
+      strength: {
+        type: 'number',
+        minValue: 0,
+        maxValue: 1,
+        step: 0.01,
+        default: 0.6,
+        description: 'Reference strength (0 = keep reference, 1 = ignore reference)',
+      },
     },
   },
   // 37
@@ -668,6 +720,20 @@ export const T2I_MODELS: T2IModel[] = [
         type: 'string',
         enum: ['basic', 'high'],
         description: 'Output quality level',
+      },
+      // Reference image (multi-modal / guided generation)
+      image_url: {
+        type: 'array',
+        maxItems: 4,
+        description: 'Reference image URL(s) or data URL(s)',
+      },
+      strength: {
+        type: 'number',
+        minValue: 0,
+        maxValue: 1,
+        step: 0.01,
+        default: 0.6,
+        description: 'Reference strength (0 = keep reference, 1 = ignore reference)',
       },
     },
   },

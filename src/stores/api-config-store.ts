@@ -795,9 +795,14 @@ export const useAPIConfigStore = create<APIConfigStore>()(
       isImageHostConfigured: () => {
         const providers = get().imageHostProviders;
         return providers.some(p => {
-          const hasKey = parseApiKeys(p.apiKey).length > 0;
           const hasUrl = !!(p.baseUrl || p.uploadPath);
-          return p.enabled && hasKey && hasUrl;
+          if (!p.enabled || !hasUrl) return false;
+          // 对于 img.scdn.io 这类公共图床，允许 0 Key 的匿名上传
+          if (p.platform === 'img_scdn') {
+            return true;
+          }
+          const hasKey = parseApiKeys(p.apiKey).length > 0;
+          return hasKey;
         });
       },
 

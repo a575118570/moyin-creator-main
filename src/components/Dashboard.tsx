@@ -709,40 +709,40 @@ export function Dashboard() {
                           </button>
                           
                           {/* Actions menu */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button
-                                onClick={(e) => e.stopPropagation()}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              onClick={(e) => e.stopPropagation()}
                                 className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1.5 rounded hover:bg-muted text-muted-foreground transition-all"
-                              >
-                                <MoreVertical className="w-4 h-4" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                              <DropdownMenuItem onClick={() => openRenameDialog(project.id, project.name)}>
-                                <Pencil className="w-4 h-4 mr-2" />
-                                重命名
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDuplicate(project.id)}
-                                disabled={isDuplicating}
-                              >
-                                <Copy className="w-4 h-4 mr-2" />
-                                复制项目
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => {
-                                  deleteProject(project.id);
-                                  toast.success(`已删除「${project.name}」`);
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                删除
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenuItem onClick={() => openRenameDialog(project.id, project.name)}>
+                              <Pencil className="w-4 h-4 mr-2" />
+                              重命名
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDuplicate(project.id)}
+                              disabled={isDuplicating}
+                            >
+                              <Copy className="w-4 h-4 mr-2" />
+                              复制项目
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => {
+                                deleteProject(project.id);
+                                toast.success(`已删除「${project.name}」`);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              删除
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         </div>
                       )}
                     </div>

@@ -100,6 +100,34 @@ type FreedomStore = FreedomState & FreedomActions;
 
 const MAX_HISTORY = 50;
 
+function isDataUrl(v: unknown): v is string {
+  return typeof v === 'string' && v.startsWith('data:');
+}
+
+function sanitizeHistoryParams(params: Record<string, any>) {
+  // Avoid persisting huge base64 blobs (reference images) into memory/storage.
+  const cleaned: Record<string, any> = { ...params };
+
+  // Common keys used by Freedom image studio for reference images
+  if (isDataUrl(cleaned.image_url)) cleaned.image_url = '[data-url]';
+  if (Array.isArray(cleaned.image_urls)) {
+    const urls = cleaned.image_urls;
+    const dataCount = urls.filter(isDataUrl).length;
+    cleaned.image_urls = dataCount > 0 ? `[data-url x${dataCount}]` : urls;
+  }
+
+  // Generic deep-ish cleanup for any accidental data urls in params
+  for (const [k, v] of Object.entries(cleaned)) {
+    if (isDataUrl(v)) cleaned[k] = '[data-url]';
+    if (Array.isArray(v) && v.some(isDataUrl)) {
+      const dataCount = v.filter(isDataUrl).length;
+      cleaned[k] = `[data-url x${dataCount}]`;
+    }
+  }
+
+  return cleaned;
+}
+
 const initialState: FreedomState = {
   activeStudio: 'image',
   
@@ -175,9 +203,13 @@ export const useFreedomStore = create<FreedomStore>()(
           : entry.type === 'video'
           ? 'videoHistory'
           : 'cinemaHistory';
+        const safeEntry: HistoryEntry = {
+          ...entry,
+          params: sanitizeHistoryParams(entry.params || {}),
+        };
         set((state) => {
           const current = state[historyKey as keyof FreedomState] as HistoryEntry[];
-          const updated = [entry, ...current].slice(0, MAX_HISTORY);
+          const updated = [safeEntry, ...current].slice(0, MAX_HISTORY);
           return { [historyKey]: updated };
         });
       },
@@ -201,7 +233,45 @@ export const useFreedomStore = create<FreedomStore>()(
     }),
     {
       name: 'moyin-freedom',
-      version: 1,
+      version: 3,
+      partialize: (state) => ({
+        // Persist Freedom state so refresh doesn't lose everything.
+        // NOTE: We still avoid persisting huge base64 blobs via sanitizeHistoryParams().
+        activeStudio: state.activeStudio,
+
+        imagePrompt: state.imagePrompt,
+        selectedImageModel: state.selectedImageModel,
+        imageAspectRatio: state.imageAspectRatio,
+        imageResolution: state.imageResolution,
+        imageExtraParams: sanitizeHistoryParams(state.imageExtraParams || {}),
+        imageResult: state.imageResult,
+        imageHistory: (state.imageHistory || []).map((h) => ({
+          ...h,
+          params: sanitizeHistoryParams(h.params || {}),
+        })),
+
+        videoPrompt: state.videoPrompt,
+        selectedVideoModel: state.selectedVideoModel,
+        videoAspectRatio: state.videoAspectRatio,
+        videoDuration: state.videoDuration,
+        videoResolution: state.videoResolution,
+        videoResult: state.videoResult,
+        videoHistory: (state.videoHistory || []).map((h) => ({
+          ...h,
+          params: sanitizeHistoryParams(h.params || {}),
+        })),
+
+        cinemaPrompt: state.cinemaPrompt,
+        selectedCamera: state.selectedCamera,
+        selectedLens: state.selectedLens,
+        selectedFocalLength: state.selectedFocalLength,
+        selectedAperture: state.selectedAperture,
+        cinemaResult: state.cinemaResult,
+        cinemaHistory: (state.cinemaHistory || []).map((h) => ({
+          ...h,
+          params: sanitizeHistoryParams(h.params || {}),
+        })),
+      }),
     }
   )
 );
