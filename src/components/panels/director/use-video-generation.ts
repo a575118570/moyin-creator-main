@@ -117,7 +117,12 @@ export async function convertToHttpUrl(rawUrl: unknown): Promise<string> {
 
   let imageData = url;
   if (url.startsWith('local-image://')) {
-    const { readImageAsBase64 } = await import('@/lib/image-storage');
+    // Web 端无法读取 local-image://，需要跳过或使用 data URL
+    const { isElectron, readImageAsBase64 } = await import('@/lib/image-storage');
+    if (!isElectron()) {
+      // Web 端：如果 URL 是 local-image://，说明是 Electron 专用路径，无法在 Web 端使用
+      throw new Error(`Web 端不支持 local-image:// 路径，请使用 data URL 或 HTTP URL`);
+    }
     const base64 = await readImageAsBase64(url);
     if (!base64) throw new Error(`无法读取本地文件: ${url.substring(0, 40)}`);
     imageData = base64;

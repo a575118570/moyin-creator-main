@@ -773,7 +773,7 @@ export const T2V_MODELS: T2VModel[] = [
       aspect_ratio: aspectRatioInput([
         '16:9', '9:16', '1:1', '4:3', '3:4', '21:9', '9:21',
       ]),
-      duration: durationInput({ default: 5 }),
+      duration: durationInput({ enum: [5, 10], default: 5 }),
       resolution: resolutionInput(['480p', '720p', '1080p'], '480p'),
     },
   },
@@ -788,7 +788,7 @@ export const T2V_MODELS: T2VModel[] = [
       aspect_ratio: aspectRatioInput([
         '16:9', '9:16', '1:1', '4:3', '3:4', '21:9', '9:21',
       ]),
-      duration: durationInput({ default: 5 }),
+      duration: durationInput({ enum: [5, 10], default: 5 }),
       resolution: resolutionInput(['480p', '720p', '1080p'], '480p'),
     },
   },
@@ -803,7 +803,7 @@ export const T2V_MODELS: T2VModel[] = [
       aspect_ratio: aspectRatioInput([
         '16:9', '9:16', '1:1', '4:3', '3:4', '21:9',
       ]),
-      duration: durationInput({ default: 5 }),
+      duration: durationInput({ enum: [5, 10], default: 5 }),
       resolution: resolutionInput(['480p', '720p', '1080p'], '480p'),
     },
   },
@@ -818,7 +818,7 @@ export const T2V_MODELS: T2VModel[] = [
       aspect_ratio: aspectRatioInput([
         '16:9', '9:16', '1:1', '3:4', '4:3', '21:9',
       ]),
-      duration: durationInput({ default: 5 }),
+      duration: durationInput({ enum: [5, 10], default: 5 }),
       resolution: resolutionInput(['480p', '720p', '1080p'], '720p'),
     },
   },
@@ -833,7 +833,7 @@ export const T2V_MODELS: T2VModel[] = [
       aspect_ratio: aspectRatioInput([
         '16:9', '9:16', '1:1', '3:4', '4:3', '21:9',
       ]),
-      duration: durationInput({ default: 5 }),
+      duration: durationInput({ enum: [5, 10], default: 5 }),
       resolution: resolutionInput(['720p', '1080p'], '720p'),
     },
   },

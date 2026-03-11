@@ -42,6 +42,18 @@ export function CinemaStudio() {
     );
   }, [cinemaPrompt, selectedCamera, selectedLens, selectedFocalLength, selectedAperture]);
 
+  const getDownloadHref = useCallback((url: string) => {
+    try {
+      const u = new URL(url);
+      if (u.protocol === 'http:' || u.protocol === 'https:') {
+        return `/api/proxy-image?url=${encodeURIComponent(url)}`;
+      }
+    } catch {
+      // ignore
+    }
+    return url;
+  }, []);
+
   const handleGenerate = useCallback(async () => {
     if (!cinemaPrompt.trim()) {
       toast.error('请输入描述文字');
@@ -173,9 +185,10 @@ export function CinemaStudio() {
               alt="Cinema shot"
               className="max-w-full max-h-[calc(100vh-200px)] rounded-lg shadow-lg object-contain"
             />
-            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+            {/* 手机端默认显示；桌面端 hover 才显示 */}
+            <div className="absolute bottom-3 right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex gap-2">
               <Button size="sm" variant="secondary" asChild>
-                <a href={cinemaResult} download target="_blank" rel="noopener">
+                <a href={getDownloadHref(cinemaResult)} download target="_blank" rel="noopener">
                   <Download className="h-4 w-4 mr-1" /> 下载
                 </a>
               </Button>

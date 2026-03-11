@@ -124,28 +124,28 @@ export function Layout() {
         {/* Mobile: 单列布局。时间线不固定，作为内容出现在底部（手机端默认折叠，避免占屏/遮挡）。 */}
         <div className="md:hidden flex-1 min-h-0 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch" }} data-scrollable>
           <div className="flex flex-col bg-panel min-h-0">
-              {/* Left Panel Content */}
-              <div className="min-h-0 flex-shrink-0">
-                {renderLeftPanel()}
-              </div>
-              {/* Preview Panel - as part of scrollable content, not fixed - only show when there's content */}
-              {/* For media tab, only show preview if there's actually a preview item */}
+            {/* Left Panel Content */}
+            <div className="min-h-0 flex-shrink-0">
+              {renderLeftPanel()}
+            </div>
+            {/* Preview Panel - as part of scrollable content, not fixed - only show when there's content */}
+            {/* For media tab, only show preview if there's actually a preview item */}
             {(activeTab === "director" ||
               activeTab === "sclass" ||
               (activeTab === "media" && previewItem)) &&
               previewItem && (
                 <div className="flex-shrink-0 border-t border-border" data-preview-panel>
-                  <div className="h-[40vh] min-h-[200px] max-h-[400px]">
-                    <PreviewPanel />
-                  </div>
+                <div className="h-[40vh] min-h-[200px] max-h-[400px]">
+                  <PreviewPanel />
                 </div>
-              )}
-              {/* Properties Panel - as part of scrollable content, not fixed - smaller height when no script data */}
-              {/* Show properties panel for director, sclass, and media tabs */}
+              </div>
+            )}
+            {/* Properties Panel - as part of scrollable content, not fixed - smaller height when no script data */}
+            {/* Show properties panel for director, sclass, and media tabs */}
               {(activeTab === "director" ||
                 activeTab === "sclass" ||
                 activeTab === "media") && (
-                <div className="flex-shrink-0 border-t border-border">
+              <div className="flex-shrink-0 border-t border-border">
                   <div
                     className={
                       activeTab === "media"
@@ -155,10 +155,10 @@ export function Layout() {
                           : "min-h-[100px] max-h-[200px]"
                     }
                   >
-                    {renderRightPanel()}
-                  </div>
+                  {renderRightPanel()}
                 </div>
-              )}
+              </div>
+            )}
 
               {/* Mobile Timeline：放在内容流最后，不固定，不遮挡点击 */}
               {showTimelineMobile && (
@@ -166,7 +166,7 @@ export function Layout() {
                   <SimpleTimeline />
                 </div>
               )}
-            </div>
+          </div>
         </div>
 
         {/* Desktop: Main content with resizable panels */}

@@ -66,6 +66,43 @@ const IMAGE_POLL_MAX_ATTEMPTS = 60;
 const VIDEO_POLL_INTERVAL = 2000;
 const VIDEO_POLL_MAX_ATTEMPTS = 120;
 
+// Aspect ratio to pixel dimension mapping
+const ASPECT_RATIO_DIMS: Record<string, { width: number; height: number }> = {
+  '1:1': { width: 1920, height: 1920 },
+  '16:9': { width: 2560, height: 1440 },
+  '9:16': { width: 1440, height: 2560 },
+  '4:3': { width: 2560, height: 1920 },
+  '3:4': { width: 1920, height: 2560 },
+  '3:2': { width: 2560, height: 1707 },
+  '2:3': { width: 1707, height: 2560 },
+  '21:9': { width: 2932, height: 1257 },
+};
+
+const RESOLUTION_MULTIPLIERS: Record<string, number> = {
+  '1K': 1,
+  '2K': 2,
+  '4K': 4,
+};
+
+function getTargetDimensions(aspectRatio: string, resolution?: string): { width: number; height: number } | undefined {
+  const baseDims = ASPECT_RATIO_DIMS[aspectRatio];
+  if (!baseDims) return undefined;
+  const multiplier = RESOLUTION_MULTIPLIERS[resolution || '2K'] || 2;
+  return {
+    width: baseDims.width * multiplier,
+    height: baseDims.height * multiplier,
+  };
+}
+
+/**
+ * 判断模型是否需要像素尺寸格式 (如 "1024x1024") 而非比例格式 (如 "1:1")
+ * doubao-seedream, cogview 等国产模型需要像素尺寸
+ */
+function needsPixelSize(model: string): boolean {
+  const m = model.toLowerCase();
+  return m.includes('doubao') || m.includes('seedream') || m.includes('cogview') || false;
+}
+
 // Retry config
 const RETRY_MAX_ATTEMPTS = 3;
 const RETRY_BASE_DELAY = 3000;
@@ -131,6 +168,33 @@ function buildEndpoint(baseUrl: string, path: string): string {
 function getRootBaseUrl(baseUrl: string): string {
   const normalized = baseUrl.replace(/\/+$/, '');
   return normalized.replace(/\/v\d+$/, '');
+}
+
+/**
+ * In Web (browser) environment, direct requests to some providers (e.g. Volcano Ark)
+ * are blocked by CORS. We route them through Vite's dev proxy (`/api/volcano`)
+ * to keep requests same-origin.
+ *
+ * Note: `vite.web.config.ts` proxies `/api/volcano/*` → `https://ark.cn-beijing.volces.com/*`
+ */
+function maybeProxyVolcanoBaseUrl(baseUrl: string): string {
+  // Only needed in browser runtime
+  if (typeof window === 'undefined') return baseUrl;
+  const trimmed = baseUrl.replace(/\/+$/, '');
+  try {
+    const u = new URL(trimmed);
+    const host = u.hostname.toLowerCase();
+    const isArk =
+      host === 'ark.cn-beijing.volces.com' ||
+      host.endsWith('.volces.com') && host.includes('ark') ||
+      host === 'ark.volces.com';
+    if (!isArk) return baseUrl;
+    // Preserve pathname (e.g. /api/v3) so buildEndpoint keeps working
+    return `/api/volcano${u.pathname}`;
+  } catch {
+    // If it's already a relative url like /api/volcano/api/v3, keep as-is
+    return baseUrl;
+  }
 }
 
 function pickFeatureConfig(feature: AIFeature, requestedModel?: string): FeatureConfig | null {
@@ -239,7 +303,9 @@ function detectFreedomVideoRoute(model: string, endpointTypes?: string[]): Freed
   const m = model.toLowerCase();
   if (m.includes('sora-2')) return 'openai_official';
   if (m.includes('kling')) return 'kling';
-  // doubao-seedance routes via '豆包视频异步' endpoint type → volc (/volc/v1/contents/generations/tasks)
+  // Doubao / Seedance (Volcano Ark) models should route via volc API
+  // Some configs may not populate endpointTypes; fall back to model ID heuristics.
+  if (m.includes('doubao') || m.includes('seedance')) return 'volc';
   if (m.includes('wan')) return 'wan';
   return 'unified';
 }
@@ -400,10 +466,41 @@ async function generateViaImagesEndpoint(
     model,
   };
 
-  if (params.aspectRatio) body.aspect_ratio = params.aspectRatio;
-  if (params.resolution) body.resolution = params.resolution;
-  if (params.width) body.width = params.width;
-  if (params.height) body.height = params.height;
+  // Check if model needs pixel size format (e.g., doubao-seedream)
+  const usePixelSize = needsPixelSize(model);
+
+  if (params.aspectRatio) {
+    if (usePixelSize) {
+      // For models like doubao-seedream, use size parameter with pixel dimensions
+      const baseDims = ASPECT_RATIO_DIMS[params.aspectRatio];
+      if (baseDims) {
+        // Use base dimensions without resolution multiplier for size parameter
+        body.size = `${baseDims.width}x${baseDims.height}`;
+      }
+    } else {
+      // For other models, use aspect_ratio and optionally width/height
+      body.aspect_ratio = params.aspectRatio;
+      
+      // If width/height are provided, use them directly
+      if (params.width && params.height) {
+        body.width = params.width;
+        body.height = params.height;
+      } else {
+        // Convert aspectRatio + resolution to width/height if needed
+        const dims = getTargetDimensions(params.aspectRatio, params.resolution);
+        if (dims) {
+          body.width = dims.width;
+          body.height = dims.height;
+        }
+      }
+    }
+  } else if (params.width && params.height) {
+    // If width/height are provided without aspectRatio, use them directly
+    body.width = params.width;
+    body.height = params.height;
+  }
+  
+  if (params.resolution && !usePixelSize) body.resolution = params.resolution;
   if (params.negativePrompt) body.negative_prompt = params.negativePrompt;
   if (params.extraParams) {
     Object.assign(body, params.extraParams);
@@ -694,10 +791,23 @@ async function generateViaReplicateImageEndpoint(
   const submitUrl = `${rootBase}/replicate/v1/predictions`;
 
   const input: Record<string, any> = { prompt: params.prompt };
-  if (params.aspectRatio) input.aspect_ratio = params.aspectRatio;
+  
+  // If width/height are provided, use them directly
+  if (params.width && params.height) {
+    input.width = params.width;
+    input.height = params.height;
+  } else if (params.aspectRatio) {
+    // Convert aspectRatio + resolution to width/height if needed
+    const dims = getTargetDimensions(params.aspectRatio, params.resolution);
+    if (dims) {
+      input.width = dims.width;
+      input.height = dims.height;
+    }
+    // Also include aspect_ratio for APIs that support it
+    input.aspect_ratio = params.aspectRatio;
+  }
+  
   if (params.resolution) input.resolution = params.resolution;
-  if (params.width) input.width = params.width;
-  if (params.height) input.height = params.height;
   if (params.negativePrompt) input.negative_prompt = params.negativePrompt;
   if (params.extraParams) Object.assign(input, params.extraParams);
 
@@ -768,6 +878,8 @@ async function _generateFreedomVideoInner(
   const { apiKey, baseUrl, model: defaultModel } = config;
   // 模型 ID 直接透传：UI 选的就是供应商原始 ID，无需转换
   const model = params.model || defaultModel;
+  // CORS workaround for Web: proxy Volcano Ark through same-origin endpoint
+  const effectiveBaseUrl = maybeProxyVolcanoBaseUrl(baseUrl);
 
   const endpointTypes = useAPIConfigStore.getState().modelEndpointTypes[model];
   const route = detectFreedomVideoRoute(model, endpointTypes);
@@ -781,22 +893,22 @@ async function _generateFreedomVideoInner(
   let result: GenerationResult;
   switch (route) {
     case 'openai_official':
-      result = await generateVideoViaOpenAIOfficial(params, model, apiKey, baseUrl);
+      result = await generateVideoViaOpenAIOfficial(params, model, apiKey, effectiveBaseUrl);
       break;
     case 'volc':
-      result = await generateVideoViaVolc(params, model, apiKey, baseUrl);
+      result = await generateVideoViaVolc(params, model, apiKey, effectiveBaseUrl);
       break;
     case 'wan':
-      result = await generateVideoViaWan(params, model, apiKey, baseUrl);
+      result = await generateVideoViaWan(params, model, apiKey, effectiveBaseUrl);
       break;
     case 'kling':
-      result = await generateVideoViaKling(params, model, apiKey, baseUrl);
+      result = await generateVideoViaKling(params, model, apiKey, effectiveBaseUrl);
       break;
     case 'replicate':
-      result = await generateVideoViaReplicate(params, model, apiKey, baseUrl);
+      result = await generateVideoViaReplicate(params, model, apiKey, effectiveBaseUrl);
       break;
     default:
-      result = await generateVideoViaUnified(params, model, apiKey, baseUrl);
+      result = await generateVideoViaUnified(params, model, apiKey, effectiveBaseUrl);
       break;
   }
 
@@ -876,7 +988,9 @@ function validateVeoVideoUploads(
 
   if (capability.mode === 'single') {
     const file = grouped.single || grouped.first;
-    if (capability.minFiles > 0 && !file) {
+    // 允许纯文本生成：只有当用户上传了文件但格式不对时才报错
+    // 如果用户没有上传任何文件，允许继续（纯文本模式）
+    if (total > 0 && capability.minFiles > 0 && !file) {
       throw new Error(`模型 ${model} 需要上传 1 张图片`);
     }
     if (grouped.references.length > 0 || !!grouped.last || (!!grouped.single && !!grouped.first)) {
@@ -889,7 +1003,8 @@ function validateVeoVideoUploads(
     if (grouped.references.length > 0 || !!grouped.single) {
       throw new Error(`模型 ${model} 仅支持首帧/尾帧输入`);
     }
-    if (capability.minFiles > 0 && !grouped.first) {
+    // 允许纯文本生成：只有当用户上传了文件但格式不对时才报错
+    if (total > 0 && capability.minFiles > 0 && !grouped.first) {
       throw new Error(`模型 ${model} 需要上传首帧图片`);
     }
     if (!grouped.first && grouped.last) {
@@ -905,8 +1020,10 @@ function validateVeoVideoUploads(
     if (!!grouped.single || !!grouped.first || !!grouped.last) {
       throw new Error(`模型 ${model} 仅支持多参考图输入`);
     }
-    if (grouped.references.length < capability.minFiles) {
-      throw new Error(`模型 ${model} 至少需要上传 1 张参考图`);
+    // 允许纯文本生成：只有当用户上传了文件但数量不足时才报错
+    // 如果用户没有上传任何文件，允许继续（纯文本模式）
+    if (total > 0 && grouped.references.length < capability.minFiles) {
+      throw new Error(`模型 ${model} 至少需要上传 ${capability.minFiles} 张参考图`);
     }
     if (grouped.references.length > capability.maxFiles) {
       throw new Error(`模型 ${model} 最多支持 ${capability.maxFiles} 张参考图`);

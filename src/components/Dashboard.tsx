@@ -8,7 +8,7 @@
  * Features: create, open, rename, duplicate, batch select & delete
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { useProjectStore } from "@/stores/project-store";
 import { useMediaPanelStore } from "@/stores/media-panel-store";
 import { useLicenseStore } from "@/stores/license-store";
@@ -49,15 +49,24 @@ import { toast } from "sonner";
 import type { Project } from "@/stores/project-store";
 import { generateSceneImage } from "@/lib/ai/image-generator";
 import { saveImageToLocal } from "@/lib/image-storage";
+import { useScriptStore } from "@/stores/script-store";
+import { generateShotImage } from "@/lib/script/shot-generator";
+import { getFeatureConfig, getFeatureNotConfiguredMessage } from "@/lib/ai/feature-router";
+import { ImageIcon, Loader2, Upload, Sparkles } from "lucide-react";
+import { useMediaStore } from "@/stores/media-store";
+import { useAppSettingsStore } from "@/stores/app-settings-store";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function Dashboard() {
   const { projects, createProject, deleteProject, renameProject, setProjectThumbnail } = useProjectStore();
   const { setActiveTab } = useMediaPanelStore();
   const licenseValid = useLicenseStore((s) => s.status.valid);
   const trialStatus = useTrialStore((s) => s.getStatus)();
+  const scriptStore = useScriptStore();
   
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
+  const [generatingImagesForProject, setGeneratingImagesForProject] = useState<string | null>(null);
 
   // Selection mode
   const [selectionMode, setSelectionMode] = useState(false);
@@ -71,6 +80,201 @@ export function Dashboard() {
 
   // Duplicate loading
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+
+  // Delete confirm dialog
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+
+  // Thumbnail dialog
+  const [thumbnailDialogOpen, setThumbnailDialogOpen] = useState(false);
+  const [thumbnailProjectId, setThumbnailProjectId] = useState<string | null>(null);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const thumbnailFileInputRef = useRef<HTMLInputElement | null>(null);
+  
+  const { mediaFiles, folders, getOrCreateCategoryFolder } = useMediaStore();
+  const { resourceSharing } = useAppSettingsStore();
+  const { activeProjectId } = useProjectStore();
+
+  // ==================== Check if project has script ====================
+  const hasScript = useCallback((projectId: string): boolean => {
+    const scriptData = scriptStore.projects[projectId];
+    if (!scriptData) return false;
+    // Check if has meaningful script content
+    if (scriptData.rawScript && scriptData.rawScript.trim().length > 10) return true;
+    if (scriptData.shots && scriptData.shots.length > 0) return true;
+    if (scriptData.scriptData && scriptData.scriptData.episodes && scriptData.scriptData.episodes.length > 0) return true;
+    if (scriptData.episodeRawScripts && scriptData.episodeRawScripts.length > 0) return true;
+    return false;
+  }, [scriptStore.projects]);
+
+  // ==================== Thumbnail Management ====================
+  const openThumbnailDialog = useCallback((projectId: string) => {
+    setThumbnailProjectId(projectId);
+    setThumbnailDialogOpen(true);
+    setSelectedFolderId(null);
+  }, []);
+
+  const handleSelectThumbnailFromMedia = useCallback(async (imageUrl: string) => {
+    if (!thumbnailProjectId) return;
+    try {
+      // Convert to local path if needed
+      const localPath = await saveImageToLocal(imageUrl, "projects", `project_${thumbnailProjectId}_cover.png`);
+      setProjectThumbnail(thumbnailProjectId, localPath);
+      toast.success("封面设置成功");
+      setThumbnailDialogOpen(false);
+    } catch (error) {
+      console.error("[Dashboard] Failed to set thumbnail:", error);
+      toast.error("设置封面失败: " + (error instanceof Error ? error.message : String(error)));
+    }
+  }, [thumbnailProjectId, setProjectThumbnail]);
+
+  const handleUploadThumbnail = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!thumbnailProjectId || !e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    if (!file.type.startsWith('image/')) {
+      toast.error("请选择图片文件");
+      return;
+    }
+
+    try {
+      const reader = new FileReader();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const localPath = await saveImageToLocal(dataUrl, "projects", `project_${thumbnailProjectId}_cover.png`);
+      setProjectThumbnail(thumbnailProjectId, localPath);
+      toast.success("封面设置成功");
+      setThumbnailDialogOpen(false);
+    } catch (error) {
+      console.error("[Dashboard] Failed to upload thumbnail:", error);
+      toast.error("上传封面失败: " + (error instanceof Error ? error.message : String(error)));
+    }
+  }, [thumbnailProjectId, setProjectThumbnail]);
+
+  const handleGenerateThumbnailFromScript = useCallback(async () => {
+    if (!thumbnailProjectId) return;
+    const project = projects.find(p => p.id === thumbnailProjectId);
+    if (!project) return;
+
+    try {
+      const prompt = `为一个名为《${project.name}》的动漫短剧项目生成一张 16:9 比例的精美封面插画，构图居中，画面完整，无裁切，适合作为项目封面。`;
+      const { imageUrl } = await generateSceneImage({
+        prompt,
+        aspectRatio: "16:9",
+        resolution: "1K",
+      });
+
+      if (imageUrl) {
+        const localPath = await saveImageToLocal(imageUrl, "projects", `project_${thumbnailProjectId}_cover.png`);
+        setProjectThumbnail(thumbnailProjectId, localPath);
+        toast.success("封面生成成功");
+        setThumbnailDialogOpen(false);
+      }
+    } catch (error) {
+      console.error("[Dashboard] Failed to generate thumbnail:", error);
+      toast.error("生成封面失败: " + (error instanceof Error ? error.message : String(error)));
+    }
+  }, [thumbnailProjectId, projects, setProjectThumbnail]);
+
+  // ==================== Generate images from script ====================
+  const handleGenerateImagesFromScript = useCallback(async (projectId: string) => {
+    const scriptData = scriptStore.projects[projectId];
+    if (!scriptData || !scriptData.shots || scriptData.shots.length === 0) {
+      toast.error('该项目没有可用的剧本镜头');
+      return;
+    }
+
+    const imageConfig = getFeatureConfig('character_generation');
+    if (!imageConfig) {
+      toast.error(getFeatureNotConfiguredMessage('character_generation'));
+      return;
+    }
+
+    const apiKey = imageConfig.apiKey;
+    const baseUrl = imageConfig.baseUrl?.replace(/\/+$/, '');
+    const model = imageConfig.models?.[0];
+    if (!apiKey || !baseUrl || !model) {
+      toast.error(getFeatureNotConfiguredMessage('character_generation'));
+      return;
+    }
+
+    setGeneratingImagesForProject(projectId);
+    const shots = scriptData.shots.filter(s => !s.imageUrl || s.imageStatus !== 'completed');
+    const totalShots = shots.length;
+
+    if (totalShots === 0) {
+      toast.info('所有镜头已生成图片');
+      setGeneratingImagesForProject(null);
+      return;
+    }
+
+    toast.info(`开始为 ${totalShots} 个镜头生成图片...`);
+
+    // Get style tokens
+    const styleMap: Record<string, string[]> = {
+      '2d_ghibli': ["Studio Ghibli style", "anime", "soft colors", "hand-drawn"],
+      '2d_miyazaki': ["Miyazaki style", "detailed backgrounds", "fantasy", "nature elements"],
+      '3d_disney': ["Disney animation style", "3D render", "vibrant colors"],
+      '3d_pixar': ["Pixar style", "3D animation", "detailed textures", "cinematic lighting"],
+      '2d_anime': ["anime style", "manga art", "2D animation", "cel shaded"],
+      'live_action': ["live action", "cinematic photography", "realistic"],
+      'documentary': ["documentary photography", "National Geographic style", "natural lighting"],
+    };
+    const styleTokens = styleMap[scriptData.styleId] || [];
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < shots.length; i++) {
+      const shot = shots[i];
+      try {
+        scriptStore.updateShot(projectId, shot.id, { imageStatus: 'generating', imageProgress: 0 });
+        
+        // Get character reference images (simplified - you may need to enhance this)
+        const referenceImages: string[] = [];
+        
+        const imageUrl = await generateShotImage(
+          shot,
+          {
+            apiKey,
+            baseUrl,
+            model,
+            aspectRatio: '16:9',
+            styleTokens,
+            referenceImages,
+          },
+          (progress) => {
+            scriptStore.updateShot(projectId, shot.id, { imageProgress: progress });
+          }
+        );
+
+        scriptStore.updateShot(projectId, shot.id, {
+          imageStatus: 'completed',
+          imageProgress: 100,
+          imageUrl,
+        });
+        successCount++;
+      } catch (error) {
+        const err = error as Error;
+        scriptStore.updateShot(projectId, shot.id, {
+          imageStatus: 'failed',
+          imageError: err.message,
+        });
+        failCount++;
+        console.error(`[Dashboard] Failed to generate image for shot ${shot.id}:`, err);
+      }
+    }
+
+    setGeneratingImagesForProject(null);
+    if (failCount === 0) {
+      toast.success(`成功为 ${successCount} 个镜头生成图片`);
+    } else {
+      toast.warning(`完成：${successCount} 成功，${failCount} 失败`);
+    }
+  }, [scriptStore]);
 
   // Sort projects by updatedAt descending
   const sortedProjects = [...projects].sort((a, b) => b.updatedAt - a.updatedAt);
@@ -445,6 +649,21 @@ export function Dashboard() {
                     </div>
                   )}
 
+                  {/* Delete Button (top right, always visible) */}
+                  {!selectionMode && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteTarget({ id: project.id, name: project.name });
+                        setDeleteConfirmOpen(true);
+                      }}
+                      className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all backdrop-blur-sm"
+                      title="删除项目"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                    </button>
+                  )}
+
                   {/* Project Thumbnail */}
                   <div className="relative aspect-video bg-muted flex items-center justify-center overflow-hidden">
                     {project.thumbnail ? (
@@ -474,42 +693,57 @@ export function Dashboard() {
                         <span>{formatDate(project.updatedAt)}</span>
                       </div>
 
-                      {/* Actions menu (hidden in selection mode) */}
+                      {/* Actions (hidden in selection mode) */}
                       {!selectionMode && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              onClick={(e) => e.stopPropagation()}
-                              className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-muted text-muted-foreground transition-all"
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenuItem onClick={() => openRenameDialog(project.id, project.name)}>
-                              <Pencil className="w-4 h-4 mr-2" />
-                              重命名
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDuplicate(project.id)}
-                              disabled={isDuplicating}
-                            >
-                              <Copy className="w-4 h-4 mr-2" />
-                              复制项目
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => {
-                                deleteProject(project.id);
-                                toast.success(`已删除「${project.name}」`);
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              删除
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center gap-1">
+                          {/* Set Thumbnail Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openThumbnailDialog(project.id);
+                            }}
+                            className="p-1.5 rounded hover:bg-muted text-muted-foreground transition-all"
+                            title="设置封面"
+                          >
+                            <ImageIcon className="w-4 h-4" />
+                          </button>
+                          
+                          {/* Actions menu */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                onClick={(e) => e.stopPropagation()}
+                                className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1.5 rounded hover:bg-muted text-muted-foreground transition-all"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenuItem onClick={() => openRenameDialog(project.id, project.name)}>
+                                <Pencil className="w-4 h-4 mr-2" />
+                                重命名
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDuplicate(project.id)}
+                                disabled={isDuplicating}
+                              >
+                                <Copy className="w-4 h-4 mr-2" />
+                                复制项目
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => {
+                                  deleteProject(project.id);
+                                  toast.success(`已删除「${project.name}」`);
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                删除
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -570,6 +804,35 @@ export function Dashboard() {
         </DialogContent>
       </Dialog>
 
+      {/* ==================== Single Delete Confirm Dialog ==================== */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>确认删除项目</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            即将删除项目 <span className="text-foreground font-medium">「{deleteTarget?.name}」</span>，
+            此操作不可撤销。确定继续？
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>取消</Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deleteTarget) {
+                  deleteProject(deleteTarget.id);
+                  toast.success(`已删除「${deleteTarget.name}」`);
+                  setDeleteConfirmOpen(false);
+                  setDeleteTarget(null);
+                }
+              }}
+            >
+              确认删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ==================== Batch Delete Confirm Dialog ==================== */}
       <Dialog open={batchDeleteConfirm} onOpenChange={setBatchDeleteConfirm}>
         <DialogContent className="sm:max-w-md">
@@ -584,6 +847,164 @@ export function Dashboard() {
             <Button variant="outline" onClick={() => setBatchDeleteConfirm(false)}>取消</Button>
             <Button variant="destructive" onClick={handleBatchDelete}>确认删除</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ==================== Set Thumbnail Dialog ==================== */}
+      <Dialog open={thumbnailDialogOpen} onOpenChange={setThumbnailDialogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>设置项目封面</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            <Tabs defaultValue="media" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="media">从素材库</TabsTrigger>
+                <TabsTrigger value="upload">上传文件</TabsTrigger>
+                {thumbnailProjectId && hasScript(thumbnailProjectId) && (
+                  <TabsTrigger value="generate">根据剧本生成</TabsTrigger>
+                )}
+              </TabsList>
+              
+              <TabsContent value="media" className="mt-4 space-y-3 max-h-[400px] overflow-y-auto">
+                {(() => {
+                  const visibleFolders = resourceSharing.shareMedia 
+                    ? folders 
+                    : folders.filter(f => !activeProjectId || f.projectId === activeProjectId || f.isSystem);
+                  const visibleMedia = resourceSharing.shareMedia
+                    ? mediaFiles
+                    : mediaFiles.filter(m => !activeProjectId || m.projectId === activeProjectId);
+                  const imageFiles = visibleMedia.filter(f => f.type === 'image' && !f.ephemeral);
+                  
+                  // Filter folders: only show folders that contain images, and exclude "上传文件" system folder
+                  const foldersWithImages = visibleFolders.filter(folder => {
+                    // Exclude "上传文件" system folder (already have upload tab)
+                    if (folder.isSystem && folder.category === 'upload') return false;
+                    // Exclude "AI视频" folder (only need images for cover)
+                    if (folder.isSystem && folder.category === 'ai-video') return false;
+                    // Only show folders that have images
+                    return imageFiles.some(img => img.folderId === folder.id);
+                  });
+                  
+                  const filteredImages = selectedFolderId === null
+                    ? imageFiles
+                    : imageFiles.filter(f => f.folderId === selectedFolderId);
+                  
+                  return (
+                    <>
+                      {foldersWithImages.length > 0 && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            onClick={() => setSelectedFolderId(null)}
+                            className={cn(
+                              "px-2 py-1 rounded text-xs transition-colors",
+                              selectedFolderId === null
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                            )}
+                          >
+                            全部
+                          </button>
+                          {foldersWithImages.map(folder => (
+                            <button
+                              key={folder.id}
+                              onClick={() => setSelectedFolderId(folder.id)}
+                              className={cn(
+                                "px-2 py-1 rounded text-xs transition-colors",
+                                selectedFolderId === folder.id
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                              )}
+                            >
+                              {folder.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {filteredImages.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-8">
+                          素材库中没有图片
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-2">
+                          {filteredImages.map(image => (
+                            <button
+                              key={image.id}
+                              onClick={() => handleSelectThumbnailFromMedia(image.url)}
+                              className="relative aspect-video rounded overflow-hidden border-2 border-transparent hover:border-primary transition-colors"
+                            >
+                              <img
+                                src={image.url}
+                                alt={image.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </TabsContent>
+              
+              <TabsContent value="upload" className="mt-4">
+                <div className="space-y-4">
+                  <input
+                    ref={thumbnailFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUploadThumbnail}
+                    className="hidden"
+                  />
+                  <Button
+                    onClick={() => thumbnailFileInputRef.current?.click()}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    选择图片文件
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    支持 JPG、PNG、WebP 等图片格式
+                  </p>
+                </div>
+              </TabsContent>
+              
+              {thumbnailProjectId && hasScript(thumbnailProjectId) && (
+                <TabsContent value="generate" className="mt-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 p-4 bg-muted rounded-lg">
+                      <Sparkles className="w-5 h-5 text-primary" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">根据剧本生成封面</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          将使用 AI 根据项目名称和剧本内容生成封面图
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={handleGenerateThumbnailFromScript}
+                      className="w-full"
+                      disabled={generatingImagesForProject === thumbnailProjectId}
+                    >
+                      {generatingImagesForProject === thumbnailProjectId ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          生成中...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          生成封面
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </TabsContent>
+              )}
+            </Tabs>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -109,6 +109,7 @@ export function useSClassGeneration() {
 
       for (let i = 0; i < refs.length; i++) {
         const ref = refs[i];
+        try {
         const httpUrl = ref.httpUrl || (await convertToHttpUrl(ref.localUrl));
         if (httpUrl) {
           // 第一张图作为 first_frame，其余作为 last_frame
@@ -116,7 +117,18 @@ export function useSClassGeneration() {
             url: httpUrl,
             role: i === 0 ? "first_frame" : "last_frame",
           });
+          } else {
+            console.warn(`[SClassGen] Failed to convert image ref ${i} to HTTP URL:`, ref);
+          }
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          console.error(`[SClassGen] Error converting image ref ${i} (${ref.tag || ref.id}):`, errMsg);
+          // 继续处理其他引用，不立即抛出错误
         }
+      }
+
+      if (imageWithRoles.length === 0 && refs.length > 0) {
+        throw new Error(`所有图片引用转换失败，请检查图床配置或图片 URL`);
       }
 
       return imageWithRoles;
@@ -294,9 +306,19 @@ export function useSClassGeneration() {
           }
         }
 
-        // 5. 收集图片引用 → 转 HTTP URL
+        // 5. 收集图片引用 → 转 HTTP URL（S级要求必须有图片）
         const imageRefs = promptResult.refs.images;
-        const imageWithRoles = await prepareImageUrls(imageRefs);
+        let imageWithRoles: Array<{ url: string; role: "first_frame" | "last_frame" }>;
+        try {
+          imageWithRoles = await prepareImageUrls(imageRefs);
+          if (imageWithRoles.length === 0) {
+            throw new Error('没有可用的图片引用，请确保分镜已上传首帧图片');
+          }
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          console.error('[SClassGen] Failed to prepare image URLs:', errMsg);
+          throw new Error(`图片处理失败: ${errMsg}`);
+        }
 
         // 5b. 收集视频/音频引用 → 转 HTTP URL（Seedance 2.0 多模态输入）
         const videoRefUrls: string[] = [];
@@ -403,10 +425,28 @@ export function useSClassGeneration() {
         };
       } catch (error) {
         const err = error as Error;
-        const errorMsg = err.message || "视频生成失败";
+        let errorMsg = err.message || "视频生成失败";
         const isModeration = isContentModerationError(err);
 
-        console.error("[SClassGen] Group generation failed:", err);
+        // 增强错误信息，便于调试
+        if (errorMsg.includes('图床未配置') || errorMsg.includes('图床上传失败')) {
+          errorMsg = `图床配置错误: ${errorMsg}。请在设置中配置图床 API Key，用于上传图片到 HTTP URL。`;
+        } else if (errorMsg.includes('local-image://')) {
+          errorMsg = `Web 端不支持本地文件路径: ${errorMsg}。请确保图片已上传到图床或使用 data URL。`;
+        } else if (errorMsg.includes('没有可用的图片引用')) {
+          errorMsg = `图片引用为空: ${errorMsg}。请确保分镜已上传首帧图片。`;
+        }
+
+        console.error("[SClassGen] Group generation failed:", {
+          error: err,
+          message: errorMsg,
+          stack: err.stack,
+          groupId: group.id,
+          groupName: group.name,
+        });
+
+        // 显示 toast 提示用户
+        toast.error(`视频生成失败: ${errorMsg}`);
 
         updateGroupVideoStatus(group.id, {
           videoStatus: "failed",

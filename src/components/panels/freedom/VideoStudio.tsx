@@ -345,6 +345,8 @@ export function VideoStudio() {
       return;
     }
 
+    // 对于纯文本生成（文生视频），允许不传图片
+    // 只有当模型明确要求必须上传图片时，才进行验证
     const uploadError = getVeoUploadValidationError(
       veoCapability,
       singleUpload,
@@ -352,10 +354,13 @@ export function VideoStudio() {
       lastFrameUpload,
       referenceUploads,
     );
-    if (uploadError) {
+    // 如果验证失败，但用户没有上传任何图片，可能是想用纯文本模式
+    // 此时只对明确要求图片的模型报错
+    if (uploadError && (singleUpload || firstFrameUpload || lastFrameUpload || referenceUploads.length > 0)) {
       toast.error(uploadError);
       return;
     }
+    // 如果验证失败但没有上传图片，且模型不是必须要求图片的，允许继续（纯文本模式）
 
     setVideoGenerating(true);
     setVideoResult(null);
@@ -637,7 +642,8 @@ export function VideoStudio() {
               loop
               className="max-w-full max-h-[calc(100vh-200px)] object-contain rounded-lg shadow-lg"
             />
-            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+            {/* 手机端默认显示；桌面端 hover 才显示 */}
+            <div className="absolute bottom-3 right-3 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex gap-2">
               <Button size="sm" variant="secondary" asChild>
                 <a href={videoResult} download target="_blank" rel="noopener">
                   <Download className="h-4 w-4 mr-1" /> 下载
