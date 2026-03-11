@@ -38,29 +38,31 @@ const STORES_TO_SAVE = [
   { name: 'timeline-store', store: useSimpleTimelineStore },
 ] as const;
 
+const DEBUG_AUTOSAVE = import.meta.env.VITE_DEBUG_AUTOSAVE === 'true';
+
 /**
  * 强制保存所有 store 的状态
  */
 export async function saveAllStores(): Promise<void> {
-  console.log('[AutoSave] 开始保存所有 store 状态...');
+  if (DEBUG_AUTOSAVE) console.log('[AutoSave] 开始保存所有 store 状态...');
   
   const savePromises = STORES_TO_SAVE.map(async ({ name, store }) => {
     try {
       // 如果 store 有 persist 中间件，调用 persist 的 flush 方法
       if (store.persist && typeof store.persist.flush === 'function') {
         await store.persist.flush();
-        console.log(`[AutoSave] ✅ ${name} 已保存`);
+        if (DEBUG_AUTOSAVE) console.log(`[AutoSave] ✅ ${name} 已保存`);
       } else if (store.persist && typeof store.persist.rehydrate === 'function') {
         // 某些版本的 zustand persist 可能没有 flush，尝试通过状态更新触发
         const state = store.getState();
         // 通过设置一个不改变状态的更新来触发保存
         store.setState(state);
-        console.log(`[AutoSave] ⚠️ ${name} 通过状态更新触发保存`);
+        if (DEBUG_AUTOSAVE) console.log(`[AutoSave] ⚠️ ${name} 通过状态更新触发保存`);
       } else {
         // 如果没有 persist，尝试手动触发状态更新
         const state = store.getState();
         store.setState(state);
-        console.log(`[AutoSave] ⚠️ ${name} 没有 persist 中间件，已触发状态更新`);
+        if (DEBUG_AUTOSAVE) console.log(`[AutoSave] ⚠️ ${name} 没有 persist 中间件，已触发状态更新`);
       }
     } catch (error) {
       console.error(`[AutoSave] ❌ ${name} 保存失败:`, error);
@@ -78,10 +80,10 @@ export async function saveAllStores(): Promise<void> {
       localStorage.removeItem(syncKey);
     }
   } catch (error) {
-    console.warn('[AutoSave] localStorage 同步写入失败:', error);
+    if (DEBUG_AUTOSAVE) console.warn('[AutoSave] localStorage 同步写入失败:', error);
   }
   
-  console.log('[AutoSave] 所有 store 保存完成');
+  if (DEBUG_AUTOSAVE) console.log('[AutoSave] 所有 store 保存完成');
 }
 
 /**
@@ -89,7 +91,7 @@ export async function saveAllStores(): Promise<void> {
  * 监听页面关闭、隐藏等事件，确保数据不会丢失
  */
 export function initAutoSave(): () => void {
-  console.log('[AutoSave] 初始化自动保存功能...');
+  if (DEBUG_AUTOSAVE) console.log('[AutoSave] 初始化自动保存功能...');
 
   let isSaving = false;
   let saveTimeout: ReturnType<typeof setTimeout> | null = null;

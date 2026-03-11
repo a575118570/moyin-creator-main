@@ -1368,10 +1368,12 @@ async function generateVideoViaVolc(
       for (const file of params.uploadFiles) {
         if (file.role === 'single' || file.role === 'first' || file.role === 'last' || file.role === 'reference') {
           const imageUrl = await toUploadHttpUrl(file);
+          // 新版 Doubao Seedance 官方 API 对 image content 的 role 非常严格，
+          // 目前只接受统一的 image 输入，不再区分 first/last/reference。
+          // 为了兼容性，这里不再传自定义 role 字段，只提供 image_url。
           contentArray.push({
             type: 'image_url',
             image_url: { url: imageUrl },
-            role: file.role === 'first' ? 'first_frame' : file.role === 'last' ? 'last_frame' : file.role,
           });
         }
       }

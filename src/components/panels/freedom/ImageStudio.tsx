@@ -38,6 +38,36 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+// 确保作为视频首帧的参考图尺寸足够（Seedance 官方要求最小高度/宽度 >= 300px）
+async function ensureMinVideoImageSize(dataUrl: string, minSize: number = 300): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const { width, height } = img;
+      const minDim = Math.min(width, height);
+      if (minDim >= minSize) {
+        resolve(dataUrl);
+        return;
+      }
+      const scale = minSize / minDim;
+      const newWidth = Math.round(width * scale);
+      const newHeight = Math.round(height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(dataUrl);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, newWidth, newHeight);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 export function ImageStudio() {
   const {
     imagePrompt, setImagePrompt,
@@ -300,10 +330,13 @@ export function ImageStudio() {
         return;
       }
 
+      // 官方 Seedance 接口要求最小高度 300px，这里自动放大到满足要求，避免 400 错误
+      const safeFirstFrameDataUrl = await ensureMinVideoImageSize(firstFrame.dataUrl, 300);
+
       const uploadFiles: FreedomVideoUploadFile[] = [
         {
           role: 'single',
-          dataUrl: firstFrame.dataUrl,
+          dataUrl: safeFirstFrameDataUrl,
           fileName: 'storyboard-frame.png',
           mimeType: 'image/png',
         },

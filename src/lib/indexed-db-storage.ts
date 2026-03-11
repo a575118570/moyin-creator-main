@@ -27,6 +27,8 @@ const isElectron = (): boolean => {
   return typeof window !== 'undefined' && !!window.fileStorage;
 };
 
+const DEBUG_STORAGE = import.meta.env.VITE_DEBUG_STORAGE === 'true';
+
 // Check if data has meaningful content (not just empty state)
 const hasRichData = (jsonStr: string | null): boolean => {
   if (!jsonStr) return false;
@@ -60,7 +62,7 @@ const hasRichData = (jsonStr: string | null): boolean => {
 
 export const fileStorage: StateStorage = {
   getItem: async (name: string): Promise<string | null> => {
-    console.log(`[Storage] getItem: ${name}, isElectron: ${isElectron()}`);
+    if (DEBUG_STORAGE) console.log(`[Storage] getItem: ${name}, isElectron: ${isElectron()}`);
     if (isElectron()) {
       try {
         // Get data from all sources
@@ -73,41 +75,41 @@ export const fileStorage: StateStorage = {
           // IndexedDB not available
         }
         
-        console.log(`[Storage] Data sizes for ${name}: file=${fileData?.length || 0}, local=${localData?.length || 0}, idb=${idbData?.length || 0}`);
+        if (DEBUG_STORAGE) console.log(`[Storage] Data sizes for ${name}: file=${fileData?.length || 0}, local=${localData?.length || 0}, idb=${idbData?.length || 0}`);
         
         // Determine which data source has the richest data
         const fileHasData = hasRichData(fileData);
         const localHasData = hasRichData(localData);
         const idbHasData = hasRichData(idbData);
         
-        console.log(`[Storage] Rich data check for ${name}: file=${fileHasData}, local=${localHasData}, idb=${idbHasData}`);
+        if (DEBUG_STORAGE) console.log(`[Storage] Rich data check for ${name}: file=${fileHasData}, local=${localHasData}, idb=${idbHasData}`);
         
         // Priority: localStorage > IndexedDB > file (for migration)
         // If localStorage or IndexedDB has richer data, migrate it
         if (localHasData && !fileHasData) {
-          console.log(`[Storage] Migrating ${name} from localStorage to file storage (richer data)...`);
+          if (DEBUG_STORAGE) console.log(`[Storage] Migrating ${name} from localStorage to file storage (richer data)...`);
           await window.fileStorage!.setItem(name, localData!);
           localStorage.removeItem(name);
-          console.log(`[Storage] Migration complete for ${name}`);
+          if (DEBUG_STORAGE) console.log(`[Storage] Migration complete for ${name}`);
           return localData;
         }
         
         if (idbHasData && !fileHasData && !localHasData) {
-          console.log(`[Storage] Migrating ${name} from IndexedDB to file storage (richer data)...`);
+          if (DEBUG_STORAGE) console.log(`[Storage] Migrating ${name} from IndexedDB to file storage (richer data)...`);
           await window.fileStorage!.setItem(name, idbData!);
           await removeFromIndexedDB(name);
-          console.log(`[Storage] Migration complete for ${name}`);
+          if (DEBUG_STORAGE) console.log(`[Storage] Migration complete for ${name}`);
           return idbData;
         }
         
         // Clean up old data if file storage has the data
         if (fileHasData) {
           if (localData) {
-            console.log(`[Storage] Cleaning up localStorage for ${name}`);
+            if (DEBUG_STORAGE) console.log(`[Storage] Cleaning up localStorage for ${name}`);
             localStorage.removeItem(name);
           }
           if (idbData) {
-            console.log(`[Storage] Cleaning up IndexedDB for ${name}`);
+            if (DEBUG_STORAGE) console.log(`[Storage] Cleaning up IndexedDB for ${name}`);
             await removeFromIndexedDB(name);
           }
           return fileData;
@@ -124,11 +126,11 @@ export const fileStorage: StateStorage = {
   },
 
   setItem: async (name: string, value: string): Promise<void> => {
-    console.log(`[Storage] setItem: ${name}, size: ${value.length} chars, isElectron: ${isElectron()}`);
+    if (DEBUG_STORAGE) console.log(`[Storage] setItem: ${name}, size: ${value.length} chars, isElectron: ${isElectron()}`);
     if (isElectron()) {
       try {
         const result = await window.fileStorage!.setItem(name, value);
-        console.log(`[Storage] File save result for ${name}:`, result);
+        if (DEBUG_STORAGE) console.log(`[Storage] File save result for ${name}:`, result);
         return;
       } catch (error) {
         console.error('[Storage] File storage setItem error:', error);

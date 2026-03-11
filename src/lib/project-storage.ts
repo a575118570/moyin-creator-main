@@ -13,6 +13,8 @@ import { fileStorage } from './indexed-db-storage';
 import { useProjectStore } from '@/stores/project-store';
 import { useAppSettingsStore } from '@/stores/app-settings-store';
 
+const DEBUG_STORAGE = import.meta.env.VITE_DEBUG_STORAGE === 'true';
+
 // ==================== Helpers ====================
 
 /**
@@ -75,7 +77,7 @@ export function createProjectScopedStorage(storeName: string): StateStorage {
       const pid = getActiveProjectId();
       
       if (!pid) {
-        console.warn(`[ProjectStorage] No activeProjectId, falling back to legacy key: ${name}`);
+        if (DEBUG_STORAGE) console.warn(`[ProjectStorage] No activeProjectId, falling back to legacy key: ${name}`);
         return fileStorage.getItem(name);
       }
 
@@ -84,12 +86,12 @@ export function createProjectScopedStorage(storeName: string): StateStorage {
       // Try project-scoped path first
       const projectData = await fileStorage.getItem(projectKey);
       if (projectData) {
-        console.log(`[ProjectStorage] Loaded ${storeName} for project ${pid.substring(0, 8)}`);
+        if (DEBUG_STORAGE) console.log(`[ProjectStorage] Loaded ${storeName} for project ${pid.substring(0, 8)}`);
         return projectData;
       }
 
       // Fall back to legacy monolithic file (pre-migration)
-      console.log(`[ProjectStorage] Project file not found for ${storeName}, trying legacy key: ${name}`);
+      if (DEBUG_STORAGE) console.log(`[ProjectStorage] Project file not found for ${storeName}, trying legacy key: ${name}`);
       return fileStorage.getItem(name);
     },
 
@@ -121,14 +123,14 @@ export function createProjectScopedStorage(storeName: string): StateStorage {
       // Log a warning if there's a mismatch (indicates a race condition was avoided)
       const routerPid = getActiveProjectId();
       if (dataProjectId && routerPid && dataProjectId !== routerPid) {
-        console.warn(
+        if (DEBUG_STORAGE) console.warn(
           `[ProjectStorage] Routing mismatch for ${storeName}: data.pid=${dataProjectId.substring(0, 8)}, ` +
           `router.pid=${routerPid.substring(0, 8)}. Using data.pid to prevent cross-project overwrite.`
         );
       }
 
       const projectKey = `_p/${pid}/${storeName}`;
-      console.log(`[ProjectStorage] Saving ${storeName} for project ${pid.substring(0, 8)} (${Math.round(value.length / 1024)}KB)`);
+      if (DEBUG_STORAGE) console.log(`[ProjectStorage] Saving ${storeName} for project ${pid.substring(0, 8)} (${Math.round(value.length / 1024)}KB)`);
       await fileStorage.setItem(projectKey, value);
     },
 
