@@ -154,6 +154,10 @@ export function ScriptInput({
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [isGeneratingSynopsis, setIsGeneratingSynopsis] = useState(false);
 
+  // 判断是否为 Electron 环境（软件端）
+  const isElectron =
+    typeof window !== "undefined" && !!(window as any).electronAPI;
+
   const handleGenerate = async () => {
     if (!idea.trim() || !onGenerateFromIdea) return;
     setIsGenerating(true);
@@ -219,7 +223,11 @@ export function ScriptInput({
               placeholder="支持的格式：\n• 第X集（集标记）\n• **1-1日 内 地点**（场景头）\n• 人物：角色A、角色B\n• 角色名：（动作）台词\n• △动作描写\n• 【字幕】【闪回】等"
               value={rawScript}
               onChange={(e) => onRawScriptChange(e.target.value)}
-              className="!h-[22dvh] !min-h-[200px] md:!h-auto md:!min-h-[520px] resize-none text-sm"
+              className={
+                isElectron
+                  ? "!h-[22dvh] !min-h-[200px] md:!h-auto md:!min-h-[300px] resize-none text-sm"
+                  : "!h-[22dvh] !min-h-[200px] md:!h-auto md:!min-h-[520px] resize-none text-sm"
+              }
               disabled={parseStatus === "parsing" || isImporting}
             />
             {/* 导入状态提示 */}

@@ -87,6 +87,10 @@ export function DirectorView() {
   const isGenerating = useIsGenerating();
   const [storyboardProgress, setStoryboardProgress] = useState(0);
 
+  // 软件端（Electron）保持旧版导演页体验：样式和流程不变
+  const isElectron =
+    typeof window !== "undefined" && !!(window as any).electronAPI;
+
   // Check if required APIs are configured (check image generation feature)
   const imageGenConfig = getFeatureConfig('character_generation');
   const hasRequiredApis = !!imageGenConfig?.apiKey;
@@ -264,10 +268,21 @@ export function DirectorView() {
     toast.success('所有视频生成完成！');
   }, [splitScenes, storyboardConfig]);
 
-  // Render based on current status (prioritize storyboard workflow)
+  // Render based on current status (优先处理“分镜编辑”视图，其次是 Web 端完整故事板流程，最后是旧版剧本流程)
   const renderContent = () => {
-    // New storyboard workflow takes priority
-    if (storyboardStatus !== 'idle') {
+    // 1️⃣ 不论 Web / 软件端，只要 storyboardStatus=editing 且有分镜，就进入分镜编辑页面
+    //    这样「加号」添加分镜后，软件端也能自动跳转到分镜编辑视图
+    if (storyboardStatus === 'editing' && splitScenes.length > 0) {
+      return (
+        <SplitScenes
+          onBack={() => resetStoryboard()}
+          onGenerateVideos={handleGenerateVideos}
+        />
+      );
+    }
+
+    // 2️⃣ Web 端：使用完整的新故事板工作流（生成故事板 → 预览 → 智能切割）
+    if (!isElectron && storyboardStatus !== "idle") {
       switch (storyboardStatus) {
         case 'generating':
           return (
@@ -296,14 +311,6 @@ export function DirectorView() {
             </div>
           );
 
-        case 'editing':
-          return (
-            <SplitScenes
-              onBack={() => resetStoryboard()}
-              onGenerateVideos={handleGenerateVideos}
-            />
-          );
-
         case 'error':
           return (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -317,10 +324,14 @@ export function DirectorView() {
       }
     }
 
-    // Legacy screenplay workflow
+    // Legacy screenplay workflow（旧版导演页逻辑，软件端固定使用）
     switch (screenplayStatus) {
       case "idle":
-        return <ScreenplayInput onGenerateStoryboard={handleGenerateStoryboard} />;
+        return isElectron ? (
+          <ScreenplayInput />
+        ) : (
+          <ScreenplayInput onGenerateStoryboard={handleGenerateStoryboard} />
+        );
 
       case "generating":
         return (
@@ -570,7 +581,11 @@ export function DirectorView() {
         );
 
       default:
-        return <ScreenplayInput onGenerateStoryboard={handleGenerateStoryboard} />;
+        return isElectron ? (
+          <ScreenplayInput />
+        ) : (
+          <ScreenplayInput onGenerateStoryboard={handleGenerateStoryboard} />
+        );
     }
   };
 
@@ -614,62 +629,66 @@ export function DirectorView() {
       <div className="md:flex-1 md:overflow-y-auto p-3 pt-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {renderContent()}
 
-        {/* Step Navigation Footer - 放在内容内部，可以滚动 */}
-        <div className="p-3 pt-2 border-t bg-panel mt-4">
-        {/* Step indicator */}
-        <div className="flex items-center justify-center gap-2 mb-2">
-          {STEPS.map((step, idx) => (
-            <div
-              key={step.id}
-              className={`flex items-center gap-1 text-xs ${
-                idx === currentStepIndex
-                  ? 'text-primary font-medium'
-                  : idx < currentStepIndex
-                  ? 'text-muted-foreground'
-                  : 'text-muted-foreground/50'
-              }`}
-            >
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
-                idx === currentStepIndex
-                  ? 'bg-primary text-primary-foreground'
-                  : idx < currentStepIndex
-                  ? 'bg-muted-foreground/30 text-muted-foreground'
-                  : 'bg-muted text-muted-foreground/50'
-              }`}>
-                {idx + 1}
-              </span>
-              <span className="hidden sm:inline">{step.name}</span>
-              {idx < STEPS.length - 1 && (
-                <ChevronRight className="h-3 w-3 text-muted-foreground/30 mx-1" />
-              )}
+        {/* Step Navigation Footer - 仅 Web 显示分步导航，软件端完全还原旧样式 */}
+        {!isElectron && (
+          <div className="p-3 pt-2 border-t bg-panel mt-4">
+            {/* Step indicator */}
+            <div className="flex items-center justify-center gap-2 mb-2">
+              {STEPS.map((step, idx) => (
+                <div
+                  key={step.id}
+                  className={`flex items-center gap-1 text-xs ${
+                    idx === currentStepIndex
+                      ? "text-primary font-medium"
+                      : idx < currentStepIndex
+                      ? "text-muted-foreground"
+                      : "text-muted-foreground/50"
+                  }`}
+                >
+                  <span
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
+                      idx === currentStepIndex
+                        ? "bg-primary text-primary-foreground"
+                        : idx < currentStepIndex
+                        ? "bg-muted-foreground/30 text-muted-foreground"
+                        : "bg-muted text-muted-foreground/50"
+                    }`}
+                  >
+                    {idx + 1}
+                  </span>
+                  <span className="hidden sm:inline">{step.name}</span>
+                  {idx < STEPS.length - 1 && (
+                    <ChevronRight className="h-3 w-3 text-muted-foreground/30 mx-1" />
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* Navigation buttons */}
-        <div className="flex items-center justify-between gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={goToPrevStep}
-            disabled={!canGoPrev}
-            className="flex-1"
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            上一步
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={goToNextStep}
-            disabled={!canGoNext}
-            className="flex-1"
-          >
-            下一步
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        </div>
-        </div>
+            {/* Navigation buttons */}
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToPrevStep}
+                disabled={!canGoPrev}
+                className="flex-1"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                上一步
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToNextStep}
+                disabled={!canGoNext}
+                className="flex-1"
+              >
+                下一步
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

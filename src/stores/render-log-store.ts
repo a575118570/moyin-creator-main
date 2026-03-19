@@ -39,6 +39,22 @@ type RenderLogStore = RenderLogStoreState & RenderLogStoreActions;
 
 const MAX_LOGS_PER_PROJECT = 500;
 
+function toText(v: any): string | undefined {
+  if (v == null) return undefined;
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean" || typeof v === "bigint") return String(v);
+  if (v instanceof Error) return v.stack || v.message || String(v);
+  try {
+    return JSON.stringify(v);
+  } catch {
+    try {
+      return String(v);
+    } catch {
+      return undefined;
+    }
+  }
+}
+
 export const useRenderLogStore = create<RenderLogStore>()(
   persist(
     (set, get) => ({
@@ -54,12 +70,12 @@ export const useRenderLogStore = create<RenderLogStore>()(
           level: entry.level,
           source: entry.source,
           kind: entry.kind,
-          entityId: entry.entityId,
-          label: entry.label,
-          status: entry.status,
-          message: entry.message,
-          error: entry.error,
-          url: entry.url,
+          entityId: toText(entry.entityId),
+          label: toText(entry.label),
+          status: toText(entry.status),
+          message: toText(entry.message) || "",
+          error: toText(entry.error),
+          url: toText(entry.url),
         };
         const merged = [next, ...prev].slice(0, MAX_LOGS_PER_PROJECT);
         set({

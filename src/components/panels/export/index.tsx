@@ -30,8 +30,13 @@ import { toast } from "sonner";
 import { copyToClipboard } from "@/lib/clipboard";
 import { exportProjectFiles } from "@/lib/script/export-service";
 import { exportSplitScenesFiles } from "@/lib/director/export-service";
-import { RenderLogDialog } from "@/components/render-log/RenderLogDialog";
-import { useState } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import React, { Suspense, useState } from "react";
+
+const LazyRenderLogDialog = React.lazy(async () => {
+  const m = await import("@/components/render-log/RenderLogDialog");
+  return { default: m.RenderLogDialog };
+});
 
 export function ExportView() {
   const { activeProject } = useProjectStore();
@@ -171,11 +176,19 @@ export function ExportView() {
       <ScrollArea className="md:flex-1">
         <div className="p-8 md:p-12">
           <div className="max-w-6xl mx-auto space-y-8">
-            <RenderLogDialog
-              open={renderLogOpen}
-              onOpenChange={setRenderLogOpen}
-              projectId={activeProject?.id}
-            />
+            {/* 重要：渲染日志弹窗在 Electron 打包环境里偶发触发 React #185。
+               这里用“懒加载 + 独立 ErrorBoundary”隔离，避免把整个 ExportView 拉崩。 */}
+            {renderLogOpen ? (
+              <ErrorBoundary name="RenderLogDialog">
+                <Suspense fallback={null}>
+                  <LazyRenderLogDialog
+                    open={renderLogOpen}
+                    onOpenChange={setRenderLogOpen}
+                    projectId={activeProject?.id}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            ) : null}
             {/* Main Status Panel */}
             <div className="bg-card border border-border rounded-xl p-8 shadow-2xl relative overflow-hidden">
               {/* Background Decoration */}
@@ -216,7 +229,7 @@ export function ExportView() {
                   </div>
                 </div>
 
-                <div className="text-right bg-muted/50 p-4 rounded-lg border border-border backdrop-blur-sm min-w-[160px]">
+                <div className="text-right bg-muted/50 p-4 rounded-lg border border-border supports-[backdrop-filter]:backdrop-blur-sm min-w-[160px]">
                   <div className="flex items-baseline justify-end gap-1 mb-1">
                     <span className="text-3xl font-mono font-bold text-primary">{progress}</span>
                     <span className="text-sm text-muted-foreground">%</span>

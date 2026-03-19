@@ -51,6 +51,7 @@ import {
 import { uploadMultipleImages } from "@/lib/utils/image-upload";
 import { VISUAL_STYLE_PRESETS, getStyleTokens, getStylesByCategory, type VisualStyleId } from "@/lib/constants/visual-styles";
 import { StylePicker } from "@/components/ui/style-picker";
+import { getFeatureConfig } from "@/lib/ai/feature-router";
 
 const EXAMPLE_PROMPTS = [
   "一只可爱的小猫在草地上玩耍，追逐蝴蝶",
@@ -371,19 +372,22 @@ export function ScreenplayInput({ onGenerateStoryboard }: ScreenplayInputProps) 
     try {
       // Initialize worker and generate screenplay
       const bridge = await initializeWorkerBridge();
-      
-      // Get API key and provider
-      const chatApiKey = getApiKey('memefast');
-      const chatProvider = 'memefast';
-      
+
+      // 从服务映射中获取「剧本分析」配置，而不是写死 memefast
+      const featureConfig = getFeatureConfig('script_analysis');
+      if (!featureConfig) {
+        throw new Error('请先在设置中配置「剧本分析/对话」的服务映射');
+      }
+
       const screenplay = await bridge.generateScreenplay(fullPrompt, images, {
         aspectRatio,
         resolution,
         sceneCount,
         styleTokens: actualStyleTokens,
-        apiKey: chatApiKey,
-        chatProvider,
-        baseUrl: typeof window !== 'undefined' ? window.location.origin : '',
+        apiKey: featureConfig.apiKey,
+        chatProvider: featureConfig.platform,
+        // 使用服务映射里配置的后端 BaseURL，保持与故事板/分镜等功能一致
+        baseUrl: featureConfig.baseUrl?.replace(/\/+$/, '') || '',
       } as any);
 
       // DirectorStore will be updated via onScreenplayGenerated callback

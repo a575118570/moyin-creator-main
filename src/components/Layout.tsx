@@ -27,6 +27,7 @@ import { MediaView } from "@/components/panels/media";
 import { SettingsPanel } from "@/components/panels/SettingsPanel";
 import { ExportView } from "@/components/panels/export";
 import { HelpPanel } from "@/components/panels/HelpPanel";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export function Layout() {
   const { activeTab, inProject } = useMediaPanelStore();
@@ -62,7 +63,11 @@ export function Layout() {
           )}
           {/* 导出 / 设置 / 脚本 / 角色 / 场景 / 自由：全屏页面的统一滚动容器 */}
           <div className="flex-1 overflow-y-auto md:overflow-auto min-h-0" data-scrollable>
-            {activeTab === "export" && <ExportView />}
+            {activeTab === "export" && (
+              <ErrorBoundary name="ExportView">
+                <ExportView />
+              </ErrorBoundary>
+            )}
             {activeTab === "settings" && <SettingsPanel />}
             {activeTab === "help" && <HelpPanel />}
             {activeTab === "script" && <ScriptView />}
@@ -164,8 +169,8 @@ export function Layout() {
               {showTimelineMobile && (
                 <div className="flex-shrink-0 border-t border-border bg-panel pb-[env(safe-area-inset-bottom)]">
                   <SimpleTimeline />
-                </div>
-              )}
+              </div>
+            )}
           </div>
         </div>
 

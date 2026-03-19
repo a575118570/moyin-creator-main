@@ -8,7 +8,7 @@
  * Character generation controls: style, views, description, reference images
  */
 
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useCharacterLibraryStore, type Character } from "@/stores/character-library-store";
 import { useProjectStore } from "@/stores/project-store";
 import type { CharacterIdentityAnchors, CharacterNegativePrompt } from "@/types/script";
@@ -96,6 +96,8 @@ export function GenerationPanel({ selectedCharacter, onCharacterCreated }: Gener
   
   const { pendingCharacterData, setPendingCharacterData, setActiveTab } = useMediaPanelStore();
   const { addMediaFromUrl, getOrCreateCategoryFolder } = useMediaStore();
+
+  const refImageInputRef = useRef<HTMLInputElement | null>(null);
   
   // Form state
   const [name, setName] = useState("");
@@ -260,7 +262,11 @@ export function GenerationPanel({ selectedCharacter, onCharacterCreated }: Gener
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) {
+      // Electron 上偶尔会出现点击后未真正选择文件的情况，这里给出可见反馈
+      toast.error("未选择图片");
+      return;
+    }
 
     const newImages: string[] = [];
     for (const file of Array.from(files)) {
@@ -277,6 +283,15 @@ export function GenerationPanel({ selectedCharacter, onCharacterCreated }: Gener
       setReferenceImages([...referenceImages, ...newImages].slice(0, 3));
     }
     e.target.value = "";
+  };
+
+  const handlePickReferenceImages = () => {
+    const el = refImageInputRef.current;
+    if (!el) {
+      toast.error("上传控件未就绪，请稍后重试");
+      return;
+    }
+    el.click();
   };
 
   const removeImage = (index: number) => {
@@ -922,10 +937,11 @@ export function GenerationPanel({ selectedCharacter, onCharacterCreated }: Gener
                     multiple
                     className="hidden"
                     onChange={handleImageChange}
+                    ref={refImageInputRef}
                   />
                   <div
                     className="w-14 h-14 border-2 border-dashed rounded-md flex flex-col items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/50 transition-colors gap-1 cursor-pointer"
-                    onClick={() => document.getElementById('gen-panel-ref-image')?.click()}
+                    onClick={handlePickReferenceImages}
                   >
                     <ImagePlus className="h-4 w-4" />
                     <span className="text-[10px]">上传</span>

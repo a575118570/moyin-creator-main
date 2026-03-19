@@ -6,6 +6,17 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 
+// Platform tag for CSS scoping (Electron vs Web/Mobile)
+// We intentionally keep this lightweight and side-effect free.
+const isElectron =
+  typeof window !== 'undefined' &&
+  (!!(window as any).electronAPI || !!(window as any).ipcRenderer)
+
+if (isElectron) {
+  document.documentElement.classList.add('platform-electron')
+  document.body.classList.add('platform-electron')
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
