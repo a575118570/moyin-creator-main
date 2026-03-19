@@ -1,6 +1,7 @@
 // Copyright (c) 2025 hotflow2024
 // Licensed under AGPL-3.0-or-later. See LICENSE for details.
 // Commercial licensing available. See COMMERCIAL_LICENSE.md.
+import { generateUUID } from "./utils";
 /**
  * API Key Manager with rotation and blacklist support
  * Based on AionUi's ApiKeyManager pattern
@@ -195,7 +196,7 @@ export function resolveVideoApiFormat(endpointTypes: string[] | undefined): Mode
  * Generate a UUID v4
  */
 export function generateId(): string {
-  return crypto.randomUUID();
+  return generateUUID();
 }
 
 /**

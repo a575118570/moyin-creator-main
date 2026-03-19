@@ -226,7 +226,7 @@ export function ScriptInput({
               className={
                 isElectron
                   ? "!h-[22dvh] !min-h-[200px] md:!h-auto md:!min-h-[300px] resize-none text-sm"
-                  : "!h-[22dvh] !min-h-[200px] md:!h-auto md:!min-h-[520px] resize-none text-sm"
+                  : "!h-[22dvh] !min-h-[200px] md:!h-auto md:!min-h-[360px] resize-none text-sm"
               }
               disabled={parseStatus === "parsing" || isImporting}
             />
@@ -402,7 +402,7 @@ export function ScriptInput({
                 placeholder="例如：一个内向程序员在咖啡店邂逅开朗女孩的温暖故事..."
                 value={idea}
                 onChange={(e) => setIdea(e.target.value)}
-                className="!h-[22dvh] !min-h-[200px] md:!h-auto md:!min-h-[520px] resize-none text-sm"
+                className="!h-[22dvh] !min-h-[200px] md:!h-auto md:!min-h-[360px] resize-none text-sm"
                 disabled={isGenerating}
               />
             </div>
@@ -434,7 +434,7 @@ export function ScriptInput({
                 <Textarea
                   value={rawScript}
                   onChange={(e) => onRawScriptChange(e.target.value)}
-                  className="!h-[22dvh] !min-h-[200px] md:!h-auto md:!min-h-[520px] resize-none text-sm"
+                  className="!h-[22dvh] !min-h-[200px] md:!h-auto md:!min-h-[360px] resize-none text-sm"
                   disabled={parseStatus === "parsing"}
                 />
               </div>
