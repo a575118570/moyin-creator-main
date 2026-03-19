@@ -282,14 +282,19 @@ html:not(.platform-electron) article::-webkit-scrollbar {
 /* Electron(Desktop): show & beautify scrollbars (Chromium) */
 .platform-electron textarea,
 .platform-electron pre,
+.platform-electron [contenteditable="true"],
+.platform-electron [data-radix-scroll-area-viewport],
 .platform-electron [class*="overflow"],
 .platform-electron [class*="scroll"] {
   scrollbar-width: thin; /* Firefox (just in case) */
-  scrollbar-color: hsl(var(--muted-foreground) / 0.45) transparent;
+  /* Auto-hide by default: transparent thumb, show on hover/focus */
+  scrollbar-color: transparent transparent;
 }
 
 .platform-electron textarea::-webkit-scrollbar,
 .platform-electron pre::-webkit-scrollbar,
+.platform-electron [contenteditable="true"]::-webkit-scrollbar,
+.platform-electron [data-radix-scroll-area-viewport]::-webkit-scrollbar,
 .platform-electron [class*="overflow"]::-webkit-scrollbar,
 .platform-electron [class*="scroll"]::-webkit-scrollbar {
   width: 10px;
@@ -298,6 +303,8 @@ html:not(.platform-electron) article::-webkit-scrollbar {
 
 .platform-electron textarea::-webkit-scrollbar-track,
 .platform-electron pre::-webkit-scrollbar-track,
+.platform-electron [contenteditable="true"]::-webkit-scrollbar-track,
+.platform-electron [data-radix-scroll-area-viewport]::-webkit-scrollbar-track,
 .platform-electron [class*="overflow"]::-webkit-scrollbar-track,
 .platform-electron [class*="scroll"]::-webkit-scrollbar-track {
   background: transparent;
@@ -305,23 +312,57 @@ html:not(.platform-electron) article::-webkit-scrollbar {
 
 .platform-electron textarea::-webkit-scrollbar-thumb,
 .platform-electron pre::-webkit-scrollbar-thumb,
+.platform-electron [contenteditable="true"]::-webkit-scrollbar-thumb,
+.platform-electron [data-radix-scroll-area-viewport]::-webkit-scrollbar-thumb,
 .platform-electron [class*="overflow"]::-webkit-scrollbar-thumb,
 .platform-electron [class*="scroll"]::-webkit-scrollbar-thumb {
-  background-color: hsl(var(--muted-foreground) / 0.35);
+  /* Hidden by default (auto-hide) */
+  background-color: transparent;
   border-radius: 999px;
   border: 3px solid transparent; /* create "padding" */
   background-clip: content-box;
 }
 
-.platform-electron textarea::-webkit-scrollbar-thumb:hover,
-.platform-electron pre::-webkit-scrollbar-thumb:hover,
-.platform-electron [class*="overflow"]::-webkit-scrollbar-thumb:hover,
-.platform-electron [class*="scroll"]::-webkit-scrollbar-thumb:hover {
+/* Show thumb on hover/focus-within for inputs and scroll areas */
+.platform-electron textarea:hover,
+.platform-electron textarea:focus,
+.platform-electron textarea:focus-within,
+.platform-electron pre:hover,
+.platform-electron [contenteditable="true"]:hover,
+.platform-electron [contenteditable="true"]:focus,
+.platform-electron [contenteditable="true"]:focus-within,
+.platform-electron [data-radix-scroll-area-viewport]:hover,
+.platform-electron [class*="overflow"]:hover,
+.platform-electron [class*="scroll"]:hover {
+  scrollbar-color: hsl(var(--muted-foreground) / 0.45) transparent;
+}
+
+.platform-electron textarea:hover::-webkit-scrollbar-thumb,
+.platform-electron textarea:focus::-webkit-scrollbar-thumb,
+.platform-electron textarea:focus-within::-webkit-scrollbar-thumb,
+.platform-electron pre:hover::-webkit-scrollbar-thumb,
+.platform-electron [contenteditable="true"]:hover::-webkit-scrollbar-thumb,
+.platform-electron [contenteditable="true"]:focus::-webkit-scrollbar-thumb,
+.platform-electron [contenteditable="true"]:focus-within::-webkit-scrollbar-thumb,
+.platform-electron [data-radix-scroll-area-viewport]:hover::-webkit-scrollbar-thumb,
+.platform-electron [class*="overflow"]:hover::-webkit-scrollbar-thumb,
+.platform-electron [class*="scroll"]:hover::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.35);
+}
+
+.platform-electron textarea:hover::-webkit-scrollbar-thumb:hover,
+.platform-electron pre:hover::-webkit-scrollbar-thumb:hover,
+.platform-electron [contenteditable="true"]:hover::-webkit-scrollbar-thumb:hover,
+.platform-electron [data-radix-scroll-area-viewport]:hover::-webkit-scrollbar-thumb:hover,
+.platform-electron [class*="overflow"]:hover::-webkit-scrollbar-thumb:hover,
+.platform-electron [class*="scroll"]:hover::-webkit-scrollbar-thumb:hover {
   background-color: hsl(var(--muted-foreground) / 0.55);
 }
 
 .platform-electron textarea::-webkit-scrollbar-corner,
 .platform-electron pre::-webkit-scrollbar-corner,
+.platform-electron [contenteditable="true"]::-webkit-scrollbar-corner,
+.platform-electron [data-radix-scroll-area-viewport]::-webkit-scrollbar-corner,
 .platform-electron [class*="overflow"]::-webkit-scrollbar-corner,
 .platform-electron [class*="scroll"]::-webkit-scrollbar-corner {
   background: transparent;

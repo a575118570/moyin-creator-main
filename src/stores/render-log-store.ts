@@ -37,7 +37,26 @@ interface RenderLogStoreActions {
 
 type RenderLogStore = RenderLogStoreState & RenderLogStoreActions;
 
-const MAX_LOGS_PER_PROJECT = 500;
+// Keep logs bounded to avoid blowing up storage (esp. in web where localStorage quota is small).
+const MAX_LOGS_PER_PROJECT_ELECTRON = 500;
+const MAX_LOGS_PER_PROJECT_WEB = 120;
+const MAX_MESSAGE_CHARS = 4000;
+const MAX_ERROR_CHARS = 8000;
+
+const isElectron = () =>
+  typeof window !== "undefined" && !!(window as any).fileStorage;
+
+// In web/mobile, do NOT persist render logs (or you'll hit localStorage quota quickly).
+const noopStorage = {
+  getItem: async (_name: string) => null,
+  setItem: async (_name: string, _value: string) => {},
+  removeItem: async (_name: string) => {},
+};
+
+function clampText(s: string | undefined, max: number): string | undefined {
+  if (!s) return s;
+  return s.length > max ? s.slice(0, max) : s;
+}
 
 function toText(v: any): string | undefined {
   if (v == null) return undefined;
@@ -63,6 +82,7 @@ export const useRenderLogStore = create<RenderLogStore>()(
         if (!projectId) return;
         const state = get();
         const prev = state.logsByProjectId[projectId] || [];
+        const maxLogs = isElectron() ? MAX_LOGS_PER_PROJECT_ELECTRON : MAX_LOGS_PER_PROJECT_WEB;
         const next: RenderLogEntry = {
           id: generateUUID(),
           projectId,
@@ -73,11 +93,11 @@ export const useRenderLogStore = create<RenderLogStore>()(
           entityId: toText(entry.entityId),
           label: toText(entry.label),
           status: toText(entry.status),
-          message: toText(entry.message) || "",
-          error: toText(entry.error),
+          message: clampText(toText(entry.message) || "", MAX_MESSAGE_CHARS) || "",
+          error: clampText(toText(entry.error), MAX_ERROR_CHARS),
           url: toText(entry.url),
         };
-        const merged = [next, ...prev].slice(0, MAX_LOGS_PER_PROJECT);
+        const merged = [next, ...prev].slice(0, maxLogs);
         set({
           logsByProjectId: {
             ...state.logsByProjectId,
@@ -94,7 +114,7 @@ export const useRenderLogStore = create<RenderLogStore>()(
     }),
     {
       name: "moyin-render-log-store",
-      storage: createJSONStorage(() => fileStorage),
+      storage: createJSONStorage(() => (isElectron() ? fileStorage : (noopStorage as any))),
       partialize: (s) => ({ logsByProjectId: s.logsByProjectId }),
     }
   )
