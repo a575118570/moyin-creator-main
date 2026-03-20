@@ -208,11 +208,12 @@ function modelSupportsCapability(
   // 1. 硬编码映射（精确控制少量预设模型）
   const modelCaps = MODEL_CAPABILITIES[modelName];
   if (modelCaps) {
-    return modelCaps.includes(required);
+    if (modelCaps.includes(required)) return true;
+    if (provider.platform === 'memefast') return false;
   }
 
-  // 2. 平台元数据（来自 /api/pricing_new 的 model_type + tags）
-  if (modelType) {
+  // 2. modelTypes/modelTags 来自 MemeFast pricing_new，按模型名全局存储；仅对 memefast 套用，避免云雾等同名模型被误判
+  if (modelType && provider.platform === 'memefast') {
     switch (required) {
       case 'text':
         return modelType === '文本';
@@ -660,7 +661,11 @@ export function FeatureBindingPanel() {
                                       <span className="text-[10px] md:text-xs font-mono text-foreground truncate flex-1 min-w-0">
                                         {getModelDisplayName(option.model)}
                                       </span>
-                                      <span className="text-[9px] md:text-[10px] text-muted-foreground ml-auto shrink-0 hidden sm:inline">
+                                      {/* 始终显示供应商名；小屏用截断 + title，避免此前 hidden sm:inline 在侧栏/窄窗下完全看不到 */}
+                                      <span
+                                        className="text-[8px] md:text-[10px] text-muted-foreground ml-auto shrink-0 min-w-0 max-w-[5.5rem] sm:max-w-[9rem] truncate inline-block align-middle text-right"
+                                        title={option.name}
+                                      >
                                         {option.name}
                                       </span>
                                     </label>

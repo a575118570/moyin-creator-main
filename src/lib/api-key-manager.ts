@@ -60,6 +60,7 @@ export function classifyModelByName(modelName: string): ModelCapability[] {
   const videoPatterns = [
     'veo', 'sora', 'wan', 'kling', 'runway', 'luma', 'seedance',
     'cogvideo', 'hunyuan-video', 'minimax-video', 'pika',
+    'vidu', 'viduq',
     'gen-3', 'gen3', 'mochi', 'ltx',
   ];
   // 精确匹配：grok-video 类
